@@ -1,8 +1,8 @@
-"""Test the black.ranges module."""
+"""Test the monochromatic.ranges module."""
 
 import pytest
 
-from black.ranges import adjusted_lines, sanitized_lines
+from monochromatic.ranges import adjusted_lines, sanitized_lines
 
 
 @pytest.mark.parametrize(

@@ -1,4 +1,4 @@
-"""Nice output for Black.
+"""Nice output for monochromatic.
 
 The double calls are for patching purposes in tests.
 """

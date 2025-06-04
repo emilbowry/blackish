@@ -18,7 +18,7 @@ PYPI_INSTANCE = "https://pypi.org/pypi"
 PYPI_TOP_PACKAGES = (
     "https://hugovk.github.io/top-pypi-packages/top-pypi-packages.min.json"
 )
-INTERNAL_BLACK_REPO = f"{tempfile.gettempdir()}/__black"
+INTERNAL_monochromatic_REPO = f"{tempfile.gettempdir()}/__monochromatic"
 
 ArchiveKind = Union[tarfile.TarFile, zipfile.ZipFile]
 
@@ -26,7 +26,7 @@ subprocess.run = partial(subprocess.run, check=True)  # type: ignore
 # https://github.com/python/mypy/issues/1484
 
 
-class BlackVersion(NamedTuple):
+class monochromaticVersion(NamedTuple):
     version: str
     config: Optional[str] = None
 
@@ -174,23 +174,23 @@ def init_repos(options: Namespace) -> tuple[Path, ...]:
     for source_directory in source_directories:
         git_create_repository(source_directory)
 
-    if options.black_repo is None:
+    if options.monochromatic_repo is None:
         subprocess.run(
-            ["git", "clone", "https://github.com/psf/black.git", INTERNAL_BLACK_REPO],
+            ["git", "clone", "https://github.com/psf/monochromatic.git", INTERNAL_monochromatic_REPO],
             cwd=options.output,
         )
-        options.black_repo = options.output / INTERNAL_BLACK_REPO
+        options.monochromatic_repo = options.output / INTERNAL_monochromatic_REPO
 
     return source_directories
 
 
 @lru_cache(8)
-def black_runner(version: str, black_repo: Path) -> Path:
+def monochromatic_runner(version: str, monochromatic_repo: Path) -> Path:
     directory = tempfile.TemporaryDirectory()
     venv.create(directory.name, with_pip=True)
 
     python = Path(directory.name) / "bin" / "python"
-    subprocess.run([python, "-m", "pip", "install", "-e", black_repo])
+    subprocess.run([python, "-m", "pip", "install", "-e", monochromatic_repo])
 
     atexit.register(directory.cleanup)
     return python
@@ -199,53 +199,53 @@ def black_runner(version: str, black_repo: Path) -> Path:
 def format_repo_with_version(
     repo: Path,
     from_branch: Optional[str],
-    black_repo: Path,
-    black_version: BlackVersion,
+    monochromatic_repo: Path,
+    monochromatic_version: monochromaticVersion,
     input_directory: Path,
 ) -> str:
-    current_branch = f"black-{black_version.version}"
-    git_switch_branch(black_version.version, repo=black_repo)
+    current_branch = f"monochromatic-{monochromatic_version.version}"
+    git_switch_branch(monochromatic_version.version, repo=monochromatic_repo)
     git_switch_branch(current_branch, repo=repo, new=True, from_branch=from_branch)
 
     format_cmd: list[Union[Path, str]] = [
-        black_runner(black_version.version, black_repo),
-        (black_repo / "black.py").resolve(),
+        monochromatic_runner(monochromatic_version.version, monochromatic_repo),
+        (monochromatic_repo / "monochromatic.py").resolve(),
         ".",
     ]
-    if black_version.config:
-        format_cmd.extend(["--config", input_directory / black_version.config])
+    if monochromatic_version.config:
+        format_cmd.extend(["--config", input_directory / monochromatic_version.config])
 
     subprocess.run(format_cmd, cwd=repo, check=False)  # ensure the process
     # continuess to run even it can't format some files. Reporting those
     # should be enough
-    git_add_and_commit(f"Format with black:{black_version.version}", repo=repo)
+    git_add_and_commit(f"Format with monochromatic:{monochromatic_version.version}", repo=repo)
 
     return current_branch
 
 
 def format_repos(repos: tuple[Path, ...], options: Namespace) -> None:
-    black_versions = tuple(
-        BlackVersion(*version.split(":")) for version in options.versions
+    monochromatic_versions = tuple(
+        monochromaticVersion(*version.split(":")) for version in options.versions
     )
 
     for repo in repos:
         from_branch = None
-        for black_version in black_versions:
+        for monochromatic_version in monochromatic_versions:
             from_branch = format_repo_with_version(
                 repo=repo,
                 from_branch=from_branch,
-                black_repo=options.black_repo,
-                black_version=black_version,
+                monochromatic_repo=options.monochromatic_repo,
+                monochromatic_version=monochromatic_version,
                 input_directory=options.input,
             )
         git_switch_branch("main", repo=repo)
 
-    git_switch_branch("main", repo=options.black_repo)
+    git_switch_branch("main", repo=options.monochromatic_repo)
 
 
 def main() -> None:
-    parser = ArgumentParser(description="""Black Gallery is a script that
-    automates the process of applying different Black versions to a selected
+    parser = ArgumentParser(description="""monochromatic Gallery is a script that
+    automates the process of applying different monochromatic versions to a selected
     PyPI package and seeing the results between versions.""")
 
     group = parser.add_mutually_exclusive_group(required=True)
@@ -254,7 +254,7 @@ def main() -> None:
         "-t", "--top-packages", help="Top n PyPI packages to download.", type=int
     )
 
-    parser.add_argument("-b", "--black-repo", help="Black's Git repository.", type=Path)
+    parser.add_argument("-b", "--monochromatic-repo", help="monochromatic's Git repository.", type=Path)
     parser.add_argument(
         "-v",
         "--version",

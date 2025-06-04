@@ -34,7 +34,7 @@ def make_pypi_svg(version: str) -> None:
 
 def replace_pr_numbers_with_links(content: str) -> str:
     """Replaces all PR numbers with the corresponding GitHub link."""
-    return re.sub(r"#(\d+)", r"[#\1](https://github.com/psf/black/pull/\1)", content)
+    return re.sub(r"#(\d+)", r"[#\1](https://github.com/psf/monochromatic/pull/\1)", content)
 
 
 def handle_include_read(
@@ -59,13 +59,13 @@ os.putenv("pythonioencoding", "utf-8")
 
 # -- Project information -----------------------------------------------------
 
-project = "Black"
-copyright = "2018-Present, Łukasz Langa and contributors to Black"
-author = "Łukasz Langa and contributors to Black"
+project = "monochromatic"
+copyright = "2018-Present, Łukasz Langa and contributors to monochromatic"
+author = "Łukasz Langa and contributors to monochromatic"
 
 # Autopopulate version
 # The version, including alpha/beta/rc tags, but not commit hash and datestamps
-release = version("black").split("+")[0]
+release = version("monochromatic").split("+")[0]
 # The short X.Y version.
 version = release
 for sp in "abcfr":
@@ -163,7 +163,7 @@ html_static_path = ["_static"]
 # -- Options for HTMLHelp output ---------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = "blackdoc"
+htmlhelp_basename = "monochromaticdoc"
 
 
 # -- Options for LaTeX output ------------------------------------------------
@@ -173,9 +173,9 @@ htmlhelp_basename = "blackdoc"
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [(
     master_doc,
-    "black.tex",
-    "Documentation for Black",
-    "Łukasz Langa and contributors to Black",
+    "monochromatic.tex",
+    "Documentation for monochromatic",
+    "Łukasz Langa and contributors to monochromatic",
     "manual",
 )]
 
@@ -184,7 +184,7 @@ latex_documents = [(
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [(master_doc, "black", "Documentation for Black", [author], 1)]
+man_pages = [(master_doc, "monochromatic", "Documentation for monochromatic", [author], 1)]
 
 
 # -- Options for Texinfo output ----------------------------------------------
@@ -194,10 +194,10 @@ man_pages = [(master_doc, "black", "Documentation for Black", [author], 1)]
 #  dir menu entry, description, category)
 texinfo_documents = [(
     master_doc,
-    "Black",
-    "Documentation for Black",
+    "monochromatic",
+    "Documentation for monochromatic",
     author,
-    "Black",
+    "monochromatic",
     "The uncompromising Python code formatter",
     "Miscellaneous",
 )]

@@ -7,8 +7,8 @@ import sys
 import warnings
 from collections.abc import Collection, Iterator
 
-from black.mode import VERSION_TO_FEATURES, Feature, TargetVersion, supports_feature
-from black.nodes import syms
+from monochromatic.mode import VERSION_TO_FEATURES, Feature, TargetVersion, supports_feature
+from monochromatic.nodes import syms
 from blib2to3 import pygram
 from blib2to3.pgen2 import driver
 from blib2to3.pgen2.grammar import Grammar
@@ -119,7 +119,7 @@ def lib2to3_unparse(node: Node) -> str:
 
 
 class ASTSafetyError(Exception):
-    """Raised when Black's generated code is not equivalent to the old AST."""
+    """Raised when monochromatic's generated code is not equivalent to the old AST."""
 
 
 def _parse_single_version(
@@ -232,7 +232,7 @@ def _stringify_ast(node: ast.AST, parent_stack: list[ast.AST]) -> Iterator[str]:
                 and isinstance(value, str)
                 and len(parent_stack) >= 2
                 # Any standalone string, ideally this would
-                # exactly match black.nodes.is_docstring
+                # exactly match monochromatic.nodes.is_docstring
                 and isinstance(parent_stack[-1], ast.Expr)
             ):
                 # Constant strings may be indented across newlines, if they are

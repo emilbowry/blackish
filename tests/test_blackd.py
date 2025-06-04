@@ -11,40 +11,40 @@ try:
     from aiohttp import web
     from aiohttp.test_utils import AioHTTPTestCase
 
-    import blackd
+    import monochromaticd
 except ImportError as e:
-    raise RuntimeError("Please install Black with the 'd' extra") from e
+    raise RuntimeError("Please install monochromatic with the 'd' extra") from e
 
 
-@pytest.mark.blackd
-class BlackDTestCase(AioHTTPTestCase):
+@pytest.mark.monochromaticd
+class monochromaticDTestCase(AioHTTPTestCase):
     def tearDown(self) -> None:
         # Work around https://github.com/python/cpython/issues/124706
         gc.collect()
         super().tearDown()
 
-    def test_blackd_main(self) -> None:
-        with patch("blackd.web.run_app"):
-            result = CliRunner().invoke(blackd.main, [])
+    def test_monochromaticd_main(self) -> None:
+        with patch("monochromaticd.web.run_app"):
+            result = CliRunner().invoke(monochromaticd.main, [])
             if result.exception is not None:
                 raise result.exception
             self.assertEqual(result.exit_code, 0)
 
     async def get_application(self) -> web.Application:
-        return blackd.make_app()
+        return monochromaticd.make_app()
 
-    async def test_blackd_request_needs_formatting(self) -> None:
+    async def test_monochromaticd_request_needs_formatting(self) -> None:
         response = await self.client.post("/", data=b"print('hello world')")
         self.assertEqual(response.status, 200)
         self.assertEqual(response.charset, "utf8")
         self.assertEqual(await response.read(), b'print("hello world")\n')
 
-    async def test_blackd_request_no_change(self) -> None:
+    async def test_monochromaticd_request_no_change(self) -> None:
         response = await self.client.post("/", data=b'print("hello world")\n')
         self.assertEqual(response.status, 204)
         self.assertEqual(await response.read(), b"")
 
-    async def test_blackd_request_syntax_error(self) -> None:
+    async def test_monochromaticd_request_syntax_error(self) -> None:
         response = await self.client.post("/", data=b"what even ( is")
         self.assertEqual(response.status, 400)
         content = await response.text()
@@ -53,24 +53,24 @@ class BlackDTestCase(AioHTTPTestCase):
             msg=f"Expected error to start with 'Cannot parse', got {repr(content)}",
         )
 
-    async def test_blackd_unsupported_version(self) -> None:
+    async def test_monochromaticd_unsupported_version(self) -> None:
         response = await self.client.post(
-            "/", data=b"what", headers={blackd.PROTOCOL_VERSION_HEADER: "2"}
+            "/", data=b"what", headers={monochromaticd.PROTOCOL_VERSION_HEADER: "2"}
         )
         self.assertEqual(response.status, 501)
 
-    async def test_blackd_supported_version(self) -> None:
+    async def test_monochromaticd_supported_version(self) -> None:
         response = await self.client.post(
-            "/", data=b"what", headers={blackd.PROTOCOL_VERSION_HEADER: "1"}
+            "/", data=b"what", headers={monochromaticd.PROTOCOL_VERSION_HEADER: "1"}
         )
         self.assertEqual(response.status, 200)
 
-    async def test_blackd_invalid_python_variant(self) -> None:
+    async def test_monochromaticd_invalid_python_variant(self) -> None:
         async def check(header_value: str, expected_status: int = 400) -> None:
             response = await self.client.post(
                 "/",
                 data=b"what",
-                headers={blackd.PYTHON_VARIANT_HEADER: header_value},
+                headers={monochromaticd.PYTHON_VARIANT_HEADER: header_value},
             )
             self.assertEqual(response.status, expected_status)
 
@@ -87,24 +87,24 @@ class BlackDTestCase(AioHTTPTestCase):
         await check("pypy3.0")
         await check("jython3.4")
 
-    async def test_blackd_pyi(self) -> None:
+    async def test_monochromaticd_pyi(self) -> None:
         source, expected = read_data("cases", "stub.py")
         response = await self.client.post(
-            "/", data=source, headers={blackd.PYTHON_VARIANT_HEADER: "pyi"}
+            "/", data=source, headers={monochromaticd.PYTHON_VARIANT_HEADER: "pyi"}
         )
         self.assertEqual(response.status, 200)
         self.assertEqual(await response.text(), expected)
 
-    async def test_blackd_diff(self) -> None:
+    async def test_monochromaticd_diff(self) -> None:
         diff_header = re.compile(
             r"(In|Out)\t\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d\.\d\d\d\d\d\d\+\d\d:\d\d"
         )
 
-        source, _ = read_data("miscellaneous", "blackd_diff")
-        expected, _ = read_data("miscellaneous", "blackd_diff.diff")
+        source, _ = read_data("miscellaneous", "monochromaticd_diff")
+        expected, _ = read_data("miscellaneous", "monochromaticd_diff.diff")
 
         response = await self.client.post(
-            "/", data=source, headers={blackd.DIFF_HEADER: "true"}
+            "/", data=source, headers={monochromaticd.DIFF_HEADER: "true"}
         )
         self.assertEqual(response.status, 200)
 
@@ -112,7 +112,7 @@ class BlackDTestCase(AioHTTPTestCase):
         actual = diff_header.sub(DETERMINISTIC_HEADER, actual)
         self.assertEqual(actual, expected)
 
-    async def test_blackd_python_variant(self) -> None:
+    async def test_monochromaticd_python_variant(self) -> None:
         code = (
             "def f(\n"
             "    and_has_a_bunch_of,\n"
@@ -125,7 +125,7 @@ class BlackDTestCase(AioHTTPTestCase):
 
         async def check(header_value: str, expected_status: int) -> None:
             response = await self.client.post(
-                "/", data=code, headers={blackd.PYTHON_VARIANT_HEADER: header_value}
+                "/", data=code, headers={monochromaticd.PYTHON_VARIANT_HEADER: header_value}
             )
             self.assertEqual(
                 response.status, expected_status, msg=await response.text()
@@ -143,21 +143,21 @@ class BlackDTestCase(AioHTTPTestCase):
         await check("py34,py36", 204)
         await check("34", 204)
 
-    async def test_blackd_line_length(self) -> None:
+    async def test_monochromaticd_line_length(self) -> None:
         response = await self.client.post(
-            "/", data=b'print("hello")\n', headers={blackd.LINE_LENGTH_HEADER: "7"}
+            "/", data=b'print("hello")\n', headers={monochromaticd.LINE_LENGTH_HEADER: "7"}
         )
         self.assertEqual(response.status, 200)
 
-    async def test_blackd_invalid_line_length(self) -> None:
+    async def test_monochromaticd_invalid_line_length(self) -> None:
         response = await self.client.post(
             "/",
             data=b'print("hello")\n',
-            headers={blackd.LINE_LENGTH_HEADER: "NaN"},
+            headers={monochromaticd.LINE_LENGTH_HEADER: "NaN"},
         )
         self.assertEqual(response.status, 400)
 
-    async def test_blackd_skip_first_source_line(self) -> None:
+    async def test_monochromaticd_skip_first_source_line(self) -> None:
         invalid_first_line = b"Header will be skipped\r\ni = [1,2,3]\nj = [1,2,3]\n"
         expected_result = b"Header will be skipped\r\ni = [1, 2, 3]\nj = [1, 2, 3]\n"
         response = await self.client.post("/", data=invalid_first_line)
@@ -165,20 +165,20 @@ class BlackDTestCase(AioHTTPTestCase):
         response = await self.client.post(
             "/",
             data=invalid_first_line,
-            headers={blackd.SKIP_SOURCE_FIRST_LINE: "true"},
+            headers={monochromaticd.SKIP_SOURCE_FIRST_LINE: "true"},
         )
         self.assertEqual(response.status, 200)
         self.assertEqual(await response.read(), expected_result)
 
-    async def test_blackd_preview(self) -> None:
+    async def test_monochromaticd_preview(self) -> None:
         response = await self.client.post(
-            "/", data=b'print("hello")\n', headers={blackd.PREVIEW: "true"}
+            "/", data=b'print("hello")\n', headers={monochromaticd.PREVIEW: "true"}
         )
         self.assertEqual(response.status, 204)
 
-    async def test_blackd_response_black_version_header(self) -> None:
+    async def test_monochromaticd_response_black_version_header(self) -> None:
         response = await self.client.post("/")
-        self.assertIsNotNone(response.headers.get(blackd.BLACK_VERSION_HEADER))
+        self.assertIsNotNone(response.headers.get(monochromaticd.monochromatic_VERSION_HEADER))
 
     async def test_cors_preflight(self) -> None:
         response = await self.client.options(

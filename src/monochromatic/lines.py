@@ -4,9 +4,9 @@ from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass, field
 from typing import Optional, TypeVar, Union, cast
 
-from black.brackets import COMMA_PRIORITY, DOT_PRIORITY, BracketTracker
-from black.mode import Mode, Preview
-from black.nodes import (
+from monochromatic.brackets import COMMA_PRIORITY, DOT_PRIORITY, BracketTracker
+from monochromatic.mode import Mode, Preview
+from monochromatic.nodes import (
 	BRACKETS,
 	CLOSING_BRACKETS,
 	OPENING_BRACKETS,
@@ -25,7 +25,7 @@ from black.nodes import (
 	syms,
 	whitespace,
 )
-from black.strings import str_width
+from monochromatic.strings import str_width
 from blib2to3.pgen2 import token
 from blib2to3.pytree import Leaf, Node
 
@@ -257,7 +257,7 @@ class Line:
 			if last_leaf.type == token.COMMA or (
 				last_leaf.type == token.RPAR and not last_leaf.value
 			):
-				# When trailing commas or optional parens are inserted by Black for
+				# When trailing commas or optional parens are inserted by monochromatic for
 				# consistency, comments after the previous last element are not moved
 				# (they don't have to, rendering will still be correct).  So we ignore
 				# trailing commas and invisible.
@@ -957,7 +957,7 @@ def can_omit_invisible_parens(
 			return False
 		# Otherwise it may also read better, but we don't do it today and requires
 		# careful considerations for all possible cases. See
-		# https://github.com/psf/black/issues/2156.
+		# https://github.com/psf/monochromatic/issues/2156.
 
 	if max_priority == DOT_PRIORITY:
 		# A single stranded method call doesn't require optional parentheses.

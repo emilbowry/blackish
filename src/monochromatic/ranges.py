@@ -1,11 +1,11 @@
-"""Functions related to Black's formatting by line ranges feature."""
+"""Functions related to monochromatic's formatting by line ranges feature."""
 
 import difflib
 from collections.abc import Collection, Iterator, Sequence
 from dataclasses import dataclass
 from typing import Union
 
-from black.nodes import (
+from monochromatic.nodes import (
     LN,
     STANDALONE_COMMENT,
     Leaf,

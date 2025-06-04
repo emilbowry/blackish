@@ -29,17 +29,17 @@ from click.testing import CliRunner
 from packaging.version import Version
 from pathspec import PathSpec
 
-import black
-import black.files
-from black import Feature, TargetVersion
-from black import re_compile_maybe_verbose as compile_pattern
-from black.cache import FileData, get_cache_dir, get_cache_file
-from black.debug import DebugVisitor
-from black.mode import Mode, Preview
-from black.output import color_diff, diff
-from black.parsing import ASTSafetyError
-from black.report import Report
-from black.strings import lines_with_leading_tabs_expanded
+import monochromatic
+import monochromatic.files
+from monochromatic import Feature, TargetVersion
+from monochromatic import re_compile_maybe_verbose as compile_pattern
+from monochromatic.cache import FileData, get_cache_dir, get_cache_file
+from monochromatic.debug import DebugVisitor
+from monochromatic.mode import Mode, Preview
+from monochromatic.output import color_diff, diff
+from monochromatic.parsing import ASTSafetyError
+from monochromatic.report import Report
+from monochromatic.strings import lines_with_leading_tabs_expanded
 
 # Import other test classes
 from tests.util import (
@@ -49,7 +49,7 @@ from tests.util import (
     PROJECT_ROOT,
     PY36_VERSIONS,
     THIS_DIR,
-    BlackBaseTestCase,
+    monochromaticBaseTestCase,
     assert_format,
     change_directory,
     dump_to_stderr,
@@ -63,8 +63,8 @@ from tests.util import (
 THIS_FILE = Path(__file__)
 EMPTY_CONFIG = THIS_DIR / "data" / "empty_pyproject.toml"
 PY36_ARGS = [f"--target-version={version.name.lower()}" for version in PY36_VERSIONS]
-DEFAULT_EXCLUDE = black.re_compile_maybe_verbose(black.const.DEFAULT_EXCLUDES)
-DEFAULT_INCLUDE = black.re_compile_maybe_verbose(black.const.DEFAULT_INCLUDES)
+DEFAULT_EXCLUDE = monochromatic.re_compile_maybe_verbose(monochromatic.const.DEFAULT_EXCLUDES)
+DEFAULT_INCLUDE = monochromatic.re_compile_maybe_verbose(monochromatic.const.DEFAULT_INCLUDES)
 T = TypeVar("T")
 R = TypeVar("R")
 
@@ -78,7 +78,7 @@ def cache_dir(exists: bool = True) -> Iterator[Path]:
         cache_dir = Path(workspace)
         if not exists:
             cache_dir = cache_dir / "new"
-        with patch("black.cache.CACHE_DIR", cache_dir):
+        with patch("monochromatic.cache.CACHE_DIR", cache_dir):
             yield cache_dir
 
 
@@ -100,7 +100,7 @@ class FakeContext(click.Context):
     def __init__(self) -> None:
         self.default_map: dict[str, Any] = {}
         self.params: dict[str, Any] = {}
-        self.command: click.Command = black.main
+        self.command: click.Command = monochromatic.main
         # Dummy root, since most of the tests don't care about it
         self.obj: dict[str, Any] = {"root": PROJECT_ROOT}
 
@@ -112,8 +112,8 @@ class FakeParameter(click.Parameter):
         pass
 
 
-class BlackRunner(CliRunner):
-    """Make sure STDOUT and STDERR are kept separate when testing Black via its CLI."""
+class monochromaticRunner(CliRunner):
+    """Make sure STDOUT and STDERR are kept separate when testing monochromatic via its CLI."""
 
     def __init__(self) -> None:
         if Version(imp_version("click")) >= Version("8.2.0"):
@@ -122,13 +122,13 @@ class BlackRunner(CliRunner):
             super().__init__(mix_stderr=False)  # type: ignore
 
 
-def invokeBlack(
+def invokemonochromatic(
     args: list[str], exit_code: int = 0, ignore_config: bool = True
 ) -> None:
-    runner = BlackRunner()
+    runner = monochromaticRunner()
     if ignore_config:
         args = ["--verbose", "--config", str(THIS_DIR / "empty.toml"), *args]
-    result = runner.invoke(black.main, args, catch_exceptions=False)
+    result = runner.invoke(monochromatic.main, args, catch_exceptions=False)
     assert result.stdout_bytes is not None
     assert result.stderr_bytes is not None
     msg = (
@@ -140,20 +140,20 @@ def invokeBlack(
     assert result.exit_code == exit_code, msg
 
 
-class BlackTestCase(BlackBaseTestCase):
-    invokeBlack = staticmethod(invokeBlack)
+class monochromaticTestCase(monochromaticBaseTestCase):
+    invokemonochromatic = staticmethod(invokemonochromatic)
 
     def test_empty_ff(self) -> None:
         expected = ""
-        tmp_file = Path(black.dump_to_file())
+        tmp_file = Path(monochromatic.dump_to_file())
         try:
-            self.assertFalse(ff(tmp_file, write_back=black.WriteBack.YES))
+            self.assertFalse(ff(tmp_file, write_back=monochromatic.WriteBack.YES))
             actual = tmp_file.read_text(encoding="utf-8")
         finally:
             os.unlink(tmp_file)
         self.assertFormatEqual(expected, actual)
 
-    @patch("black.dump_to_file", dump_to_stderr)
+    @patch("monochromatic.dump_to_file", dump_to_stderr)
     def test_one_empty_line(self) -> None:
         for nl in ["\n", "\r\n"]:
             source = expected = nl
@@ -162,15 +162,15 @@ class BlackTestCase(BlackBaseTestCase):
     def test_one_empty_line_ff(self) -> None:
         for nl in ["\n", "\r\n"]:
             expected = nl
-            tmp_file = Path(black.dump_to_file(nl))
+            tmp_file = Path(monochromatic.dump_to_file(nl))
             if system() == "Windows":
                 # Writing files in text mode automatically uses the system newline,
                 # but in this case we don't want this for testing reasons. See:
-                # https://github.com/psf/black/pull/3348
+                # https://github.com/psf/monochromatic/pull/3348
                 with open(tmp_file, "wb") as f:
                     f.write(nl.encode("utf-8"))
             try:
-                self.assertFalse(ff(tmp_file, write_back=black.WriteBack.YES))
+                self.assertFalse(ff(tmp_file, write_back=monochromatic.WriteBack.YES))
                 with open(tmp_file, "rb") as f:
                     actual = f.read().decode("utf-8")
             finally:
@@ -179,14 +179,14 @@ class BlackTestCase(BlackBaseTestCase):
 
     def test_piping(self) -> None:
         _, source, expected = read_data_from_file(
-            PROJECT_ROOT / "src/black/__init__.py"
+            PROJECT_ROOT / "src/monochromatic/__init__.py"
         )
-        result = BlackRunner().invoke(
-            black.main,
+        result = monochromaticRunner().invoke(
+            monochromatic.main,
             [
                 "-",
                 "--fast",
-                f"--line-length={black.DEFAULT_LINE_LENGTH}",
+                f"--line-length={monochromatic.DEFAULT_LINE_LENGTH}",
                 f"--config={EMPTY_CONFIG}",
             ],
             input=BytesIO(source.encode("utf-8")),
@@ -194,8 +194,8 @@ class BlackTestCase(BlackBaseTestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertFormatEqual(expected, result.stdout)
         if source != result.stdout:
-            black.assert_equivalent(source, result.stdout)
-            black.assert_stable(source, result.stdout, DEFAULT_MODE)
+            monochromatic.assert_equivalent(source, result.stdout)
+            monochromatic.assert_stable(source, result.stdout, DEFAULT_MODE)
 
     def test_piping_diff(self) -> None:
         diff_header = re.compile(
@@ -207,12 +207,12 @@ class BlackTestCase(BlackBaseTestCase):
         args = [
             "-",
             "--fast",
-            f"--line-length={black.DEFAULT_LINE_LENGTH}",
+            f"--line-length={monochromatic.DEFAULT_LINE_LENGTH}",
             "--diff",
             f"--config={EMPTY_CONFIG}",
         ]
-        result = BlackRunner().invoke(
-            black.main, args, input=BytesIO(source.encode("utf-8"))
+        result = monochromaticRunner().invoke(
+            monochromatic.main, args, input=BytesIO(source.encode("utf-8"))
         )
         self.assertEqual(result.exit_code, 0)
         actual = diff_header.sub(DETERMINISTIC_HEADER, result.stdout)
@@ -224,13 +224,13 @@ class BlackTestCase(BlackBaseTestCase):
         args = [
             "-",
             "--fast",
-            f"--line-length={black.DEFAULT_LINE_LENGTH}",
+            f"--line-length={monochromatic.DEFAULT_LINE_LENGTH}",
             "--diff",
             "--color",
             f"--config={EMPTY_CONFIG}",
         ]
-        result = BlackRunner().invoke(
-            black.main, args, input=BytesIO(source.encode("utf-8"))
+        result = monochromaticRunner().invoke(
+            monochromatic.main, args, input=BytesIO(source.encode("utf-8"))
         )
         actual = result.output
         # Again, the contents are checked in a different test, so only look for colors.
@@ -242,20 +242,20 @@ class BlackTestCase(BlackBaseTestCase):
 
     def test_pep_572_version_detection(self) -> None:
         source, _ = read_data("cases", "pep_572")
-        root = black.lib2to3_parse(source)
-        features = black.get_features_used(root)
-        self.assertIn(black.Feature.ASSIGNMENT_EXPRESSIONS, features)
-        versions = black.detect_target_versions(root)
-        self.assertIn(black.TargetVersion.PY38, versions)
+        root = monochromatic.lib2to3_parse(source)
+        features = monochromatic.get_features_used(root)
+        self.assertIn(monochromatic.Feature.ASSIGNMENT_EXPRESSIONS, features)
+        versions = monochromatic.detect_target_versions(root)
+        self.assertIn(monochromatic.TargetVersion.PY38, versions)
 
     def test_pep_695_version_detection(self) -> None:
         for file in ("type_aliases", "type_params"):
             source, _ = read_data("cases", file)
-            root = black.lib2to3_parse(source)
-            features = black.get_features_used(root)
-            self.assertIn(black.Feature.TYPE_PARAMS, features)
-            versions = black.detect_target_versions(root)
-            self.assertIn(black.TargetVersion.PY312, versions)
+            root = monochromatic.lib2to3_parse(source)
+            features = monochromatic.get_features_used(root)
+            self.assertIn(monochromatic.Feature.TYPE_PARAMS, features)
+            versions = monochromatic.detect_target_versions(root)
+            self.assertIn(monochromatic.TargetVersion.PY312, versions)
 
     def test_pep_696_version_detection(self) -> None:
         source, _ = read_data("cases", "type_param_defaults")
@@ -268,34 +268,34 @@ class BlackTestCase(BlackBaseTestCase):
             "type X[**P=int]=int",
         ]
         for sample in samples:
-            root = black.lib2to3_parse(sample)
-            features = black.get_features_used(root)
-            self.assertIn(black.Feature.TYPE_PARAM_DEFAULTS, features)
+            root = monochromatic.lib2to3_parse(sample)
+            features = monochromatic.get_features_used(root)
+            self.assertIn(monochromatic.Feature.TYPE_PARAM_DEFAULTS, features)
 
     def test_expression_ff(self) -> None:
         source, expected = read_data("cases", "expression.py")
-        tmp_file = Path(black.dump_to_file(source))
+        tmp_file = Path(monochromatic.dump_to_file(source))
         try:
-            self.assertTrue(ff(tmp_file, write_back=black.WriteBack.YES))
+            self.assertTrue(ff(tmp_file, write_back=monochromatic.WriteBack.YES))
             actual = tmp_file.read_text(encoding="utf-8")
         finally:
             os.unlink(tmp_file)
         self.assertFormatEqual(expected, actual)
-        with patch("black.dump_to_file", dump_to_stderr):
-            black.assert_equivalent(source, actual)
-            black.assert_stable(source, actual, DEFAULT_MODE)
+        with patch("monochromatic.dump_to_file", dump_to_stderr):
+            monochromatic.assert_equivalent(source, actual)
+            monochromatic.assert_stable(source, actual, DEFAULT_MODE)
 
     def test_expression_diff(self) -> None:
         source, _ = read_data("cases", "expression.py")
         expected, _ = read_data("cases", "expression.diff")
-        tmp_file = Path(black.dump_to_file(source))
+        tmp_file = Path(monochromatic.dump_to_file(source))
         diff_header = re.compile(
             rf"{re.escape(str(tmp_file))}\t\d\d\d\d-\d\d-\d\d "
             r"\d\d:\d\d:\d\d\.\d\d\d\d\d\d\+\d\d:\d\d"
         )
         try:
-            result = BlackRunner().invoke(
-                black.main, ["--diff", str(tmp_file), f"--config={EMPTY_CONFIG}"]
+            result = monochromaticRunner().invoke(
+                monochromatic.main, ["--diff", str(tmp_file), f"--config={EMPTY_CONFIG}"]
             )
             self.assertEqual(result.exit_code, 0)
         finally:
@@ -303,7 +303,7 @@ class BlackTestCase(BlackBaseTestCase):
         actual = result.stdout
         actual = diff_header.sub(DETERMINISTIC_HEADER, actual)
         if expected != actual:
-            dump = black.dump_to_file(actual)
+            dump = monochromatic.dump_to_file(actual)
             msg = (
                 "Expected diff isn't equal to the actual. If you made changes to"
                 " expression.py and this is an anticipated difference, overwrite"
@@ -314,10 +314,10 @@ class BlackTestCase(BlackBaseTestCase):
     def test_expression_diff_with_color(self) -> None:
         source, _ = read_data("cases", "expression.py")
         expected, _ = read_data("cases", "expression.diff")
-        tmp_file = Path(black.dump_to_file(source))
+        tmp_file = Path(monochromatic.dump_to_file(source))
         try:
-            result = BlackRunner().invoke(
-                black.main,
+            result = monochromaticRunner().invoke(
+                monochromatic.main,
                 ["--diff", "--color", str(tmp_file), f"--config={EMPTY_CONFIG}"],
             )
         finally:
@@ -333,50 +333,50 @@ class BlackTestCase(BlackBaseTestCase):
 
     def test_detect_pos_only_arguments(self) -> None:
         source, _ = read_data("cases", "pep_570")
-        root = black.lib2to3_parse(source)
-        features = black.get_features_used(root)
-        self.assertIn(black.Feature.POS_ONLY_ARGUMENTS, features)
-        versions = black.detect_target_versions(root)
-        self.assertIn(black.TargetVersion.PY38, versions)
+        root = monochromatic.lib2to3_parse(source)
+        features = monochromatic.get_features_used(root)
+        self.assertIn(monochromatic.Feature.POS_ONLY_ARGUMENTS, features)
+        versions = monochromatic.detect_target_versions(root)
+        self.assertIn(monochromatic.TargetVersion.PY38, versions)
 
     def test_detect_debug_f_strings(self) -> None:
-        root = black.lib2to3_parse("""f"{x=}" """)
-        features = black.get_features_used(root)
-        self.assertIn(black.Feature.DEBUG_F_STRINGS, features)
-        versions = black.detect_target_versions(root)
-        self.assertIn(black.TargetVersion.PY38, versions)
+        root = monochromatic.lib2to3_parse("""f"{x=}" """)
+        features = monochromatic.get_features_used(root)
+        self.assertIn(monochromatic.Feature.DEBUG_F_STRINGS, features)
+        versions = monochromatic.detect_target_versions(root)
+        self.assertIn(monochromatic.TargetVersion.PY38, versions)
 
-        root = black.lib2to3_parse(
+        root = monochromatic.lib2to3_parse(
             """f"{x}"\nf'{"="}'\nf'{(x:=5)}'\nf'{f(a="3=")}'\nf'{x:=10}'\n"""
         )
-        features = black.get_features_used(root)
-        self.assertNotIn(black.Feature.DEBUG_F_STRINGS, features)
+        features = monochromatic.get_features_used(root)
+        self.assertNotIn(monochromatic.Feature.DEBUG_F_STRINGS, features)
 
-        root = black.lib2to3_parse(
+        root = monochromatic.lib2to3_parse(
             """f"heard a rumour that { f'{1+1=}' } ... seems like it could be true" """
         )
-        features = black.get_features_used(root)
-        self.assertIn(black.Feature.DEBUG_F_STRINGS, features)
+        features = monochromatic.get_features_used(root)
+        self.assertIn(monochromatic.Feature.DEBUG_F_STRINGS, features)
 
-    @patch("black.dump_to_file", dump_to_stderr)
+    @patch("monochromatic.dump_to_file", dump_to_stderr)
     def test_string_quotes(self) -> None:
         source, expected = read_data("miscellaneous", "string_quotes")
-        mode = black.Mode(unstable=True)
+        mode = monochromatic.Mode(unstable=True)
         assert_format(source, expected, mode)
         mode = replace(mode, string_normalization=False)
         not_normalized = fs(source, mode=mode)
         self.assertFormatEqual(source.replace("\\\n", ""), not_normalized)
-        black.assert_equivalent(source, not_normalized)
-        black.assert_stable(source, not_normalized, mode=mode)
+        monochromatic.assert_equivalent(source, not_normalized)
+        monochromatic.assert_stable(source, not_normalized, mode=mode)
 
     def test_skip_source_first_line(self) -> None:
         source, _ = read_data("miscellaneous", "invalid_header")
-        tmp_file = Path(black.dump_to_file(source))
+        tmp_file = Path(monochromatic.dump_to_file(source))
         # Full source should fail (invalid syntax at header)
-        self.invokeBlack([str(tmp_file), "--diff", "--check"], exit_code=123)
+        self.invokemonochromatic([str(tmp_file), "--diff", "--check"], exit_code=123)
         # So, skipping the first line should work
-        result = BlackRunner().invoke(
-            black.main, [str(tmp_file), "-x", f"--config={EMPTY_CONFIG}"]
+        result = monochromaticRunner().invoke(
+            monochromatic.main, [str(tmp_file), "-x", f"--config={EMPTY_CONFIG}"]
         )
         self.assertEqual(result.exit_code, 0)
         actual = tmp_file.read_text(encoding="utf-8")
@@ -389,7 +389,7 @@ class BlackTestCase(BlackBaseTestCase):
             test_file = Path(workspace) / "skip_header.py"
             test_file.write_bytes(code_mixing_newlines)
             mode = replace(DEFAULT_MODE, skip_source_first_line=True)
-            ff(test_file, mode=mode, write_back=black.WriteBack.YES)
+            ff(test_file, mode=mode, write_back=monochromatic.WriteBack.YES)
             self.assertEqual(test_file.read_bytes(), expected)
 
     def test_skip_magic_trailing_comma(self) -> None:
@@ -397,14 +397,14 @@ class BlackTestCase(BlackBaseTestCase):
         expected, _ = read_data(
             "miscellaneous", "expression_skip_magic_trailing_comma.diff"
         )
-        tmp_file = Path(black.dump_to_file(source))
+        tmp_file = Path(monochromatic.dump_to_file(source))
         diff_header = re.compile(
             rf"{re.escape(str(tmp_file))}\t\d\d\d\d-\d\d-\d\d "
             r"\d\d:\d\d:\d\d\.\d\d\d\d\d\d\+\d\d:\d\d"
         )
         try:
-            result = BlackRunner().invoke(
-                black.main, ["-C", "--diff", str(tmp_file), f"--config={EMPTY_CONFIG}"]
+            result = monochromaticRunner().invoke(
+                monochromatic.main, ["-C", "--diff", str(tmp_file), f"--config={EMPTY_CONFIG}"]
             )
             self.assertEqual(result.exit_code, 0)
         finally:
@@ -413,7 +413,7 @@ class BlackTestCase(BlackBaseTestCase):
         actual = diff_header.sub(DETERMINISTIC_HEADER, actual)
         actual = actual.rstrip() + "\n"  # the diff output has a trailing space
         if expected != actual:
-            dump = black.dump_to_file(actual)
+            dump = monochromatic.dump_to_file(actual)
             msg = (
                 "Expected diff isn't equal to the actual. If you made changes to"
                 " expression.py and this is an anticipated difference, overwrite"
@@ -422,7 +422,7 @@ class BlackTestCase(BlackBaseTestCase):
             )
             self.assertEqual(expected, actual, msg)
 
-    @patch("black.dump_to_file", dump_to_stderr)
+    @patch("monochromatic.dump_to_file", dump_to_stderr)
     def test_async_as_identifier(self) -> None:
         source_path = get_case_path("miscellaneous", "async_as_identifier")
         _, source, expected = read_data_from_file(source_path)
@@ -430,14 +430,14 @@ class BlackTestCase(BlackBaseTestCase):
         self.assertFormatEqual(expected, actual)
         major, minor = sys.version_info[:2]
         if major < 3 or (major <= 3 and minor < 7):
-            black.assert_equivalent(source, actual)
-        black.assert_stable(source, actual, DEFAULT_MODE)
-        # ensure black can parse this when the target is 3.6
-        self.invokeBlack([str(source_path), "--target-version", "py36"])
+            monochromatic.assert_equivalent(source, actual)
+        monochromatic.assert_stable(source, actual, DEFAULT_MODE)
+        # ensure monochromatic can parse this when the target is 3.6
+        self.invokemonochromatic([str(source_path), "--target-version", "py36"])
         # but not on 3.7, because async/await is no longer an identifier
-        self.invokeBlack([str(source_path), "--target-version", "py37"], exit_code=123)
+        self.invokemonochromatic([str(source_path), "--target-version", "py37"], exit_code=123)
 
-    @patch("black.dump_to_file", dump_to_stderr)
+    @patch("monochromatic.dump_to_file", dump_to_stderr)
     def test_python37(self) -> None:
         source_path = get_case_path("cases", "python37")
         _, source, expected = read_data_from_file(source_path)
@@ -445,12 +445,12 @@ class BlackTestCase(BlackBaseTestCase):
         self.assertFormatEqual(expected, actual)
         major, minor = sys.version_info[:2]
         if major > 3 or (major == 3 and minor >= 7):
-            black.assert_equivalent(source, actual)
-        black.assert_stable(source, actual, DEFAULT_MODE)
-        # ensure black can parse this when the target is 3.7
-        self.invokeBlack([str(source_path), "--target-version", "py37"])
+            monochromatic.assert_equivalent(source, actual)
+        monochromatic.assert_stable(source, actual, DEFAULT_MODE)
+        # ensure monochromatic can parse this when the target is 3.7
+        self.invokemonochromatic([str(source_path), "--target-version", "py37"])
         # but not on 3.6, because we use async as a reserved keyword
-        self.invokeBlack([str(source_path), "--target-version", "py36"], exit_code=123)
+        self.invokemonochromatic([str(source_path), "--target-version", "py36"], exit_code=123)
 
     def test_tab_comment_indentation(self) -> None:
         contents_tab = "if 1:\n\tif 2:\n\t\tpass\n\t# comment\n\tpass\n"
@@ -464,7 +464,7 @@ class BlackTestCase(BlackBaseTestCase):
         self.assertFormatEqual(contents_spc, fs(contents_tab))
 
     def test_false_positive_symlink_output_issue_3384(self) -> None:
-        # Emulate the behavior when using the CLI (`black ./child  --verbose`), which
+        # Emulate the behavior when using the CLI (`monochromatic ./child  --verbose`), which
         # involves patching some `pathlib.Path` methods. In particular, `is_dir` is
         # patched only on its first call: when checking if "./child" is a directory it
         # should return True. The "./child" folder exists relative to the cwd when
@@ -476,7 +476,7 @@ class BlackTestCase(BlackBaseTestCase):
             # Note that the root folder (project_root) isn't the folder
             # named "root" (aka working_directory)
             report = MagicMock(verbose=True)
-            black.get_sources(
+            monochromatic.get_sources(
                 root=project_root,
                 src=("./child",),
                 quiet=False,
@@ -508,21 +508,21 @@ class BlackTestCase(BlackBaseTestCase):
         def err(msg: str, **kwargs: Any) -> None:
             err_lines.append(msg)
 
-        with patch("black.output._out", out), patch("black.output._err", err):
-            report.done(Path("f1"), black.Changed.NO)
+        with patch("monochromatic.output._out", out), patch("monochromatic.output._err", err):
+            report.done(Path("f1"), monochromatic.Changed.NO)
             self.assertEqual(len(out_lines), 1)
             self.assertEqual(len(err_lines), 0)
             self.assertEqual(out_lines[-1], "f1 already well formatted, good job.")
             self.assertEqual(unstyle(str(report)), "1 file left unchanged.")
             self.assertEqual(report.return_code, 0)
-            report.done(Path("f2"), black.Changed.YES)
+            report.done(Path("f2"), monochromatic.Changed.YES)
             self.assertEqual(len(out_lines), 2)
             self.assertEqual(len(err_lines), 0)
             self.assertEqual(out_lines[-1], "reformatted f2")
             self.assertEqual(
                 unstyle(str(report)), "1 file reformatted, 1 file left unchanged."
             )
-            report.done(Path("f3"), black.Changed.CACHED)
+            report.done(Path("f3"), monochromatic.Changed.CACHED)
             self.assertEqual(len(out_lines), 3)
             self.assertEqual(len(err_lines), 0)
             self.assertEqual(
@@ -545,7 +545,7 @@ class BlackTestCase(BlackBaseTestCase):
                 " reformat.",
             )
             self.assertEqual(report.return_code, 123)
-            report.done(Path("f3"), black.Changed.YES)
+            report.done(Path("f3"), monochromatic.Changed.YES)
             self.assertEqual(len(out_lines), 4)
             self.assertEqual(len(err_lines), 1)
             self.assertEqual(out_lines[-1], "reformatted f3")
@@ -575,7 +575,7 @@ class BlackTestCase(BlackBaseTestCase):
                 " reformat.",
             )
             self.assertEqual(report.return_code, 123)
-            report.done(Path("f4"), black.Changed.NO)
+            report.done(Path("f4"), monochromatic.Changed.NO)
             self.assertEqual(len(out_lines), 6)
             self.assertEqual(len(err_lines), 2)
             self.assertEqual(out_lines[-1], "f4 already well formatted, good job.")
@@ -610,19 +610,19 @@ class BlackTestCase(BlackBaseTestCase):
         def err(msg: str, **kwargs: Any) -> None:
             err_lines.append(msg)
 
-        with patch("black.output._out", out), patch("black.output._err", err):
-            report.done(Path("f1"), black.Changed.NO)
+        with patch("monochromatic.output._out", out), patch("monochromatic.output._err", err):
+            report.done(Path("f1"), monochromatic.Changed.NO)
             self.assertEqual(len(out_lines), 0)
             self.assertEqual(len(err_lines), 0)
             self.assertEqual(unstyle(str(report)), "1 file left unchanged.")
             self.assertEqual(report.return_code, 0)
-            report.done(Path("f2"), black.Changed.YES)
+            report.done(Path("f2"), monochromatic.Changed.YES)
             self.assertEqual(len(out_lines), 0)
             self.assertEqual(len(err_lines), 0)
             self.assertEqual(
                 unstyle(str(report)), "1 file reformatted, 1 file left unchanged."
             )
-            report.done(Path("f3"), black.Changed.CACHED)
+            report.done(Path("f3"), monochromatic.Changed.CACHED)
             self.assertEqual(len(out_lines), 0)
             self.assertEqual(len(err_lines), 0)
             self.assertEqual(
@@ -642,7 +642,7 @@ class BlackTestCase(BlackBaseTestCase):
                 " reformat.",
             )
             self.assertEqual(report.return_code, 123)
-            report.done(Path("f3"), black.Changed.YES)
+            report.done(Path("f3"), monochromatic.Changed.YES)
             self.assertEqual(len(out_lines), 0)
             self.assertEqual(len(err_lines), 1)
             self.assertEqual(
@@ -670,7 +670,7 @@ class BlackTestCase(BlackBaseTestCase):
                 " reformat.",
             )
             self.assertEqual(report.return_code, 123)
-            report.done(Path("f4"), black.Changed.NO)
+            report.done(Path("f4"), monochromatic.Changed.NO)
             self.assertEqual(len(out_lines), 0)
             self.assertEqual(len(err_lines), 2)
             self.assertEqual(
@@ -694,7 +694,7 @@ class BlackTestCase(BlackBaseTestCase):
             )
 
     def test_report_normal(self) -> None:
-        report = black.Report()
+        report = monochromatic.Report()
         out_lines = []
         err_lines = []
 
@@ -704,20 +704,20 @@ class BlackTestCase(BlackBaseTestCase):
         def err(msg: str, **kwargs: Any) -> None:
             err_lines.append(msg)
 
-        with patch("black.output._out", out), patch("black.output._err", err):
-            report.done(Path("f1"), black.Changed.NO)
+        with patch("monochromatic.output._out", out), patch("monochromatic.output._err", err):
+            report.done(Path("f1"), monochromatic.Changed.NO)
             self.assertEqual(len(out_lines), 0)
             self.assertEqual(len(err_lines), 0)
             self.assertEqual(unstyle(str(report)), "1 file left unchanged.")
             self.assertEqual(report.return_code, 0)
-            report.done(Path("f2"), black.Changed.YES)
+            report.done(Path("f2"), monochromatic.Changed.YES)
             self.assertEqual(len(out_lines), 1)
             self.assertEqual(len(err_lines), 0)
             self.assertEqual(out_lines[-1], "reformatted f2")
             self.assertEqual(
                 unstyle(str(report)), "1 file reformatted, 1 file left unchanged."
             )
-            report.done(Path("f3"), black.Changed.CACHED)
+            report.done(Path("f3"), monochromatic.Changed.CACHED)
             self.assertEqual(len(out_lines), 1)
             self.assertEqual(len(err_lines), 0)
             self.assertEqual(out_lines[-1], "reformatted f2")
@@ -738,7 +738,7 @@ class BlackTestCase(BlackBaseTestCase):
                 " reformat.",
             )
             self.assertEqual(report.return_code, 123)
-            report.done(Path("f3"), black.Changed.YES)
+            report.done(Path("f3"), monochromatic.Changed.YES)
             self.assertEqual(len(out_lines), 2)
             self.assertEqual(len(err_lines), 1)
             self.assertEqual(out_lines[-1], "reformatted f3")
@@ -767,7 +767,7 @@ class BlackTestCase(BlackBaseTestCase):
                 " reformat.",
             )
             self.assertEqual(report.return_code, 123)
-            report.done(Path("f4"), black.Changed.NO)
+            report.done(Path("f4"), monochromatic.Changed.NO)
             self.assertEqual(len(out_lines), 2)
             self.assertEqual(len(err_lines), 2)
             self.assertEqual(
@@ -791,20 +791,20 @@ class BlackTestCase(BlackBaseTestCase):
             )
 
     def test_lib2to3_parse(self) -> None:
-        with self.assertRaises(black.InvalidInput):
-            black.lib2to3_parse("invalid syntax")
+        with self.assertRaises(monochromatic.InvalidInput):
+            monochromatic.lib2to3_parse("invalid syntax")
 
         straddling = "x + y"
-        black.lib2to3_parse(straddling)
-        black.lib2to3_parse(straddling, {TargetVersion.PY36})
+        monochromatic.lib2to3_parse(straddling)
+        monochromatic.lib2to3_parse(straddling, {TargetVersion.PY36})
 
         py2_only = "print x"
-        with self.assertRaises(black.InvalidInput):
-            black.lib2to3_parse(py2_only, {TargetVersion.PY36})
+        with self.assertRaises(monochromatic.InvalidInput):
+            monochromatic.lib2to3_parse(py2_only, {TargetVersion.PY36})
 
         py3_only = "exec(x, end=y)"
-        black.lib2to3_parse(py3_only)
-        black.lib2to3_parse(py3_only, {TargetVersion.PY36})
+        monochromatic.lib2to3_parse(py3_only)
+        monochromatic.lib2to3_parse(py3_only, {TargetVersion.PY36})
 
     def test_get_features_used_decorator(self) -> None:
         # Test the feature detection of new decorator syntax
@@ -814,11 +814,11 @@ class BlackTestCase(BlackBaseTestCase):
         simples, relaxed = read_data("miscellaneous", "decorators")
         # skip explanation comments at the top of the file
         for simple_test in simples.split("##")[1:]:
-            node = black.lib2to3_parse(simple_test)
+            node = monochromatic.lib2to3_parse(simple_test)
             decorator = str(node.children[0].children[0]).strip()
             self.assertNotIn(
                 Feature.RELAXED_DECORATORS,
-                black.get_features_used(node),
+                monochromatic.get_features_used(node),
                 msg=(
                     f"decorator '{decorator}' follows python<=3.8 syntax"
                     "but is detected as 3.9+"
@@ -827,11 +827,11 @@ class BlackTestCase(BlackBaseTestCase):
             )
         # skip the '# output' comment at the top of the output part
         for relaxed_test in relaxed.split("##")[1:]:
-            node = black.lib2to3_parse(relaxed_test)
+            node = monochromatic.lib2to3_parse(relaxed_test)
             decorator = str(node.children[0].children[0]).strip()
             self.assertIn(
                 Feature.RELAXED_DECORATORS,
-                black.get_features_used(node),
+                monochromatic.get_features_used(node),
                 msg=(
                     f"decorator '{decorator}' uses python3.9+ syntax"
                     "but is detected as python<=3.8"
@@ -917,8 +917,8 @@ class BlackTestCase(BlackBaseTestCase):
         )
 
     def check_features_used(self, source: str, expected: set[Feature]) -> None:
-        node = black.lib2to3_parse(source)
-        actual = black.get_features_used(node)
+        node = monochromatic.lib2to3_parse(source)
+        actual = monochromatic.get_features_used(node)
         msg = f"Expected {expected} but got {actual} for {source!r}"
         try:
             self.assertEqual(actual, expected, msg=msg)
@@ -937,42 +937,42 @@ class BlackTestCase(BlackBaseTestCase):
             ("from __future__ import x, y", set()),
         ]:
             with self.subTest(src=src, features=features):
-                node = black.lib2to3_parse(src)
-                future_imports = black.get_future_imports(node)
+                node = monochromatic.lib2to3_parse(src)
+                future_imports = monochromatic.get_future_imports(node)
                 self.assertEqual(
-                    black.get_features_used(node, future_imports=future_imports),
+                    monochromatic.get_features_used(node, future_imports=future_imports),
                     features,
                 )
 
     def test_get_future_imports(self) -> None:
-        node = black.lib2to3_parse("\n")
-        self.assertEqual(set(), black.get_future_imports(node))
-        node = black.lib2to3_parse("from __future__ import black\n")
-        self.assertEqual({"black"}, black.get_future_imports(node))
-        node = black.lib2to3_parse("from __future__ import multiple, imports\n")
-        self.assertEqual({"multiple", "imports"}, black.get_future_imports(node))
-        node = black.lib2to3_parse("from __future__ import (parenthesized, imports)\n")
-        self.assertEqual({"parenthesized", "imports"}, black.get_future_imports(node))
-        node = black.lib2to3_parse(
+        node = monochromatic.lib2to3_parse("\n")
+        self.assertEqual(set(), monochromatic.get_future_imports(node))
+        node = monochromatic.lib2to3_parse("from __future__ import monochromatic\n")
+        self.assertEqual({"monochromatic"}, monochromatic.get_future_imports(node))
+        node = monochromatic.lib2to3_parse("from __future__ import multiple, imports\n")
+        self.assertEqual({"multiple", "imports"}, monochromatic.get_future_imports(node))
+        node = monochromatic.lib2to3_parse("from __future__ import (parenthesized, imports)\n")
+        self.assertEqual({"parenthesized", "imports"}, monochromatic.get_future_imports(node))
+        node = monochromatic.lib2to3_parse(
             "from __future__ import multiple\nfrom __future__ import imports\n"
         )
-        self.assertEqual({"multiple", "imports"}, black.get_future_imports(node))
-        node = black.lib2to3_parse("# comment\nfrom __future__ import black\n")
-        self.assertEqual({"black"}, black.get_future_imports(node))
-        node = black.lib2to3_parse('"""docstring"""\nfrom __future__ import black\n')
-        self.assertEqual({"black"}, black.get_future_imports(node))
-        node = black.lib2to3_parse("some(other, code)\nfrom __future__ import black\n")
-        self.assertEqual(set(), black.get_future_imports(node))
-        node = black.lib2to3_parse("from some.module import black\n")
-        self.assertEqual(set(), black.get_future_imports(node))
-        node = black.lib2to3_parse(
+        self.assertEqual({"multiple", "imports"}, monochromatic.get_future_imports(node))
+        node = monochromatic.lib2to3_parse("# comment\nfrom __future__ import monochromatic\n")
+        self.assertEqual({"monochromatic"}, monochromatic.get_future_imports(node))
+        node = monochromatic.lib2to3_parse('"""docstring"""\nfrom __future__ import monochromatic\n')
+        self.assertEqual({"monochromatic"}, monochromatic.get_future_imports(node))
+        node = monochromatic.lib2to3_parse("some(other, code)\nfrom __future__ import monochromatic\n")
+        self.assertEqual(set(), monochromatic.get_future_imports(node))
+        node = monochromatic.lib2to3_parse("from some.module import monochromatic\n")
+        self.assertEqual(set(), monochromatic.get_future_imports(node))
+        node = monochromatic.lib2to3_parse(
             "from __future__ import unicode_literals as _unicode_literals"
         )
-        self.assertEqual({"unicode_literals"}, black.get_future_imports(node))
-        node = black.lib2to3_parse(
+        self.assertEqual({"unicode_literals"}, monochromatic.get_future_imports(node))
+        node = monochromatic.lib2to3_parse(
             "from __future__ import unicode_literals as _lol, print"
         )
-        self.assertEqual({"unicode_literals", "print"}, black.get_future_imports(node))
+        self.assertEqual({"unicode_literals", "print"}, monochromatic.get_future_imports(node))
 
     @pytest.mark.incompatible_with_mypyc
     def test_debug_visitor(self) -> None:
@@ -987,12 +987,12 @@ class BlackTestCase(BlackBaseTestCase):
         def err(msg: str, **kwargs: Any) -> None:
             err_lines.append(msg)
 
-        with patch("black.debug.out", out):
+        with patch("monochromatic.debug.out", out):
             DebugVisitor.show(source)
         actual = "\n".join(out_lines) + "\n"
         log_name = ""
         if expected != actual:
-            log_name = black.dump_to_file(*out_lines)
+            log_name = monochromatic.dump_to_file(*out_lines)
         self.assertEqual(
             expected,
             actual,
@@ -1002,38 +1002,38 @@ class BlackTestCase(BlackBaseTestCase):
     def test_format_file_contents(self) -> None:
         mode = DEFAULT_MODE
         empty = ""
-        with self.assertRaises(black.NothingChanged):
-            black.format_file_contents(empty, mode=mode, fast=False)
+        with self.assertRaises(monochromatic.NothingChanged):
+            monochromatic.format_file_contents(empty, mode=mode, fast=False)
         just_nl = "\n"
-        with self.assertRaises(black.NothingChanged):
-            black.format_file_contents(just_nl, mode=mode, fast=False)
+        with self.assertRaises(monochromatic.NothingChanged):
+            monochromatic.format_file_contents(just_nl, mode=mode, fast=False)
         same = "j = [1, 2, 3]\n"
-        with self.assertRaises(black.NothingChanged):
-            black.format_file_contents(same, mode=mode, fast=False)
+        with self.assertRaises(monochromatic.NothingChanged):
+            monochromatic.format_file_contents(same, mode=mode, fast=False)
         different = "j = [1,2,3]"
         expected = same
-        actual = black.format_file_contents(different, mode=mode, fast=False)
+        actual = monochromatic.format_file_contents(different, mode=mode, fast=False)
         self.assertEqual(expected, actual)
         invalid = "return if you can"
-        with self.assertRaises(black.InvalidInput) as e:
-            black.format_file_contents(invalid, mode=mode, fast=False)
+        with self.assertRaises(monochromatic.InvalidInput) as e:
+            monochromatic.format_file_contents(invalid, mode=mode, fast=False)
         self.assertEqual(str(e.exception), "Cannot parse: 1:7: return if you can")
 
         just_crlf = "\r\n"
-        with self.assertRaises(black.NothingChanged):
-            black.format_file_contents(just_crlf, mode=mode, fast=False)
+        with self.assertRaises(monochromatic.NothingChanged):
+            monochromatic.format_file_contents(just_crlf, mode=mode, fast=False)
         just_whitespace_nl = "\n\t\n \n\t \n \t\n\n"
-        actual = black.format_file_contents(just_whitespace_nl, mode=mode, fast=False)
+        actual = monochromatic.format_file_contents(just_whitespace_nl, mode=mode, fast=False)
         self.assertEqual("\n", actual)
         just_whitespace_crlf = "\r\n\t\r\n \r\n\t \r\n \t\r\n\r\n"
-        actual = black.format_file_contents(just_whitespace_crlf, mode=mode, fast=False)
+        actual = monochromatic.format_file_contents(just_whitespace_crlf, mode=mode, fast=False)
         self.assertEqual("\r\n", actual)
 
     def test_endmarker(self) -> None:
-        n = black.lib2to3_parse("\n")
-        self.assertEqual(n.type, black.syms.file_input)
+        n = monochromatic.lib2to3_parse("\n")
+        self.assertEqual(n.type, monochromatic.syms.file_input)
         self.assertEqual(len(n.children), 1)
-        self.assertEqual(n.children[0].type, black.token.ENDMARKER)
+        self.assertEqual(n.children[0].type, monochromatic.token.ENDMARKER)
 
     @patch("tests.conftest.PRINT_FULL_TREE", True)
     @patch("tests.conftest.PRINT_TREE_DIFF", False)
@@ -1048,7 +1048,7 @@ class BlackTestCase(BlackBaseTestCase):
         def err(msg: str, **kwargs: Any) -> None:
             err_lines.append(msg)
 
-        with patch("black.output._out", out), patch("black.output._err", err):
+        with patch("monochromatic.output._out", out), patch("monochromatic.output._err", err):
             with self.assertRaises(AssertionError):
                 self.assertFormatEqual("j = [1, 2, 3]", "j = [1, 2, 3,]")
 
@@ -1070,7 +1070,7 @@ class BlackTestCase(BlackBaseTestCase):
         def err(msg: str, **kwargs: Any) -> None:
             err_lines.append(msg)
 
-        with patch("black.output._out", out), patch("black.output._err", err):
+        with patch("monochromatic.output._out", out), patch("monochromatic.output._err", err):
             with self.assertRaises(AssertionError):
                 self.assertFormatEqual("j = [1, 2, 3]\n", "j = [1, 2, 3,]\n")
 
@@ -1089,27 +1089,27 @@ class BlackTestCase(BlackBaseTestCase):
                 (workspace / "two.py").resolve(),
             ]:
                 f.write_text('print("hello")\n', encoding="utf-8")
-            self.invokeBlack([str(workspace)])
+            self.invokemonochromatic([str(workspace)])
 
     @event_loop()
     def test_check_diff_use_together(self) -> None:
         with cache_dir():
             # Files which will be reformatted.
             src1 = get_case_path("miscellaneous", "string_quotes")
-            self.invokeBlack([str(src1), "--diff", "--check"], exit_code=1)
+            self.invokemonochromatic([str(src1), "--diff", "--check"], exit_code=1)
             # Files which will not be reformatted.
             src2 = get_case_path("cases", "composition")
-            self.invokeBlack([str(src2), "--diff", "--check"])
+            self.invokemonochromatic([str(src2), "--diff", "--check"])
             # Multi file command.
-            self.invokeBlack([str(src1), str(src2), "--diff", "--check"], exit_code=1)
+            self.invokemonochromatic([str(src1), str(src2), "--diff", "--check"], exit_code=1)
 
     def test_no_src_fails(self) -> None:
         with cache_dir():
-            self.invokeBlack([], exit_code=1)
+            self.invokemonochromatic([], exit_code=1)
 
     def test_src_and_code_fails(self) -> None:
         with cache_dir():
-            self.invokeBlack([".", "-c", "0"], exit_code=1)
+            self.invokemonochromatic([".", "-c", "0"], exit_code=1)
 
     def test_broken_symlink(self) -> None:
         with cache_dir() as workspace:
@@ -1118,7 +1118,7 @@ class BlackTestCase(BlackBaseTestCase):
                 symlink.symlink_to("nonexistent.py")
             except (OSError, NotImplementedError) as e:
                 self.skipTest(f"Can't create symlinks: {e}")
-            self.invokeBlack([str(workspace.resolve())])
+            self.invokemonochromatic([str(workspace.resolve())])
 
     def test_single_file_force_pyi(self) -> None:
         pyi_mode = replace(DEFAULT_MODE, is_pyi=True)
@@ -1126,16 +1126,16 @@ class BlackTestCase(BlackBaseTestCase):
         with cache_dir() as workspace:
             path = (workspace / "file.py").resolve()
             path.write_text(contents, encoding="utf-8")
-            self.invokeBlack([str(path), "--pyi"])
+            self.invokemonochromatic([str(path), "--pyi"])
             actual = path.read_text(encoding="utf-8")
             # verify cache with --pyi is separate
-            pyi_cache = black.Cache.read(pyi_mode)
+            pyi_cache = monochromatic.Cache.read(pyi_mode)
             assert not pyi_cache.is_changed(path)
-            normal_cache = black.Cache.read(DEFAULT_MODE)
+            normal_cache = monochromatic.Cache.read(DEFAULT_MODE)
             assert normal_cache.is_changed(path)
         self.assertFormatEqual(expected, actual)
-        black.assert_equivalent(contents, actual)
-        black.assert_stable(contents, actual, pyi_mode)
+        monochromatic.assert_equivalent(contents, actual)
+        monochromatic.assert_stable(contents, actual, pyi_mode)
 
     @event_loop()
     def test_multi_file_force_pyi(self) -> None:
@@ -1149,13 +1149,13 @@ class BlackTestCase(BlackBaseTestCase):
             ]
             for path in paths:
                 path.write_text(contents, encoding="utf-8")
-            self.invokeBlack([str(p) for p in paths] + ["--pyi"])
+            self.invokemonochromatic([str(p) for p in paths] + ["--pyi"])
             for path in paths:
                 actual = path.read_text(encoding="utf-8")
                 self.assertEqual(actual, expected)
             # verify cache with --pyi is separate
-            pyi_cache = black.Cache.read(pyi_mode)
-            normal_cache = black.Cache.read(reg_mode)
+            pyi_cache = monochromatic.Cache.read(pyi_mode)
+            normal_cache = monochromatic.Cache.read(reg_mode)
             for path in paths:
                 assert not pyi_cache.is_changed(path)
                 assert normal_cache.is_changed(path)
@@ -1163,7 +1163,7 @@ class BlackTestCase(BlackBaseTestCase):
     def test_pipe_force_pyi(self) -> None:
         source, expected = read_data("miscellaneous", "force_pyi")
         result = CliRunner().invoke(
-            black.main, ["-", "-q", "--pyi"], input=BytesIO(source.encode("utf-8"))
+            monochromatic.main, ["-", "-q", "--pyi"], input=BytesIO(source.encode("utf-8"))
         )
         self.assertEqual(result.exit_code, 0)
         actual = result.output
@@ -1176,12 +1176,12 @@ class BlackTestCase(BlackBaseTestCase):
         with cache_dir() as workspace:
             path = (workspace / "file.py").resolve()
             path.write_text(source, encoding="utf-8")
-            self.invokeBlack([str(path), *PY36_ARGS])
+            self.invokemonochromatic([str(path), *PY36_ARGS])
             actual = path.read_text(encoding="utf-8")
             # verify cache with --target-version is separate
-            py36_cache = black.Cache.read(py36_mode)
+            py36_cache = monochromatic.Cache.read(py36_mode)
             assert not py36_cache.is_changed(path)
-            normal_cache = black.Cache.read(reg_mode)
+            normal_cache = monochromatic.Cache.read(reg_mode)
             assert normal_cache.is_changed(path)
         self.assertEqual(actual, expected)
 
@@ -1197,13 +1197,13 @@ class BlackTestCase(BlackBaseTestCase):
             ]
             for path in paths:
                 path.write_text(source, encoding="utf-8")
-            self.invokeBlack([str(p) for p in paths] + PY36_ARGS)
+            self.invokemonochromatic([str(p) for p in paths] + PY36_ARGS)
             for path in paths:
                 actual = path.read_text(encoding="utf-8")
                 self.assertEqual(actual, expected)
             # verify cache with --target-version is separate
-            pyi_cache = black.Cache.read(py36_mode)
-            normal_cache = black.Cache.read(reg_mode)
+            pyi_cache = monochromatic.Cache.read(py36_mode)
+            normal_cache = monochromatic.Cache.read(reg_mode)
             for path in paths:
                 assert not pyi_cache.is_changed(path)
                 assert normal_cache.is_changed(path)
@@ -1211,7 +1211,7 @@ class BlackTestCase(BlackBaseTestCase):
     def test_pipe_force_py36(self) -> None:
         source, expected = read_data("miscellaneous", "force_py36")
         result = CliRunner().invoke(
-            black.main,
+            monochromatic.main,
             ["-", "-q", "--target-version=py36"],
             input=BytesIO(source.encode("utf-8")),
         )
@@ -1222,120 +1222,120 @@ class BlackTestCase(BlackBaseTestCase):
     @pytest.mark.incompatible_with_mypyc
     def test_reformat_one_with_stdin(self) -> None:
         with patch(
-            "black.format_stdin_to_stdout",
-            return_value=lambda *args, **kwargs: black.Changed.YES,
+            "monochromatic.format_stdin_to_stdout",
+            return_value=lambda *args, **kwargs: monochromatic.Changed.YES,
         ) as fsts:
             report = MagicMock()
             path = Path("-")
-            black.reformat_one(
+            monochromatic.reformat_one(
                 path,
                 fast=True,
-                write_back=black.WriteBack.YES,
+                write_back=monochromatic.WriteBack.YES,
                 mode=DEFAULT_MODE,
                 report=report,
             )
             fsts.assert_called_once()
-            report.done.assert_called_with(path, black.Changed.YES)
+            report.done.assert_called_with(path, monochromatic.Changed.YES)
 
     @pytest.mark.incompatible_with_mypyc
     def test_reformat_one_with_stdin_filename(self) -> None:
         with patch(
-            "black.format_stdin_to_stdout",
-            return_value=lambda *args, **kwargs: black.Changed.YES,
+            "monochromatic.format_stdin_to_stdout",
+            return_value=lambda *args, **kwargs: monochromatic.Changed.YES,
         ) as fsts:
             report = MagicMock()
             p = "foo.py"
-            path = Path(f"__BLACK_STDIN_FILENAME__{p}")
+            path = Path(f"__monochromatic_STDIN_FILENAME__{p}")
             expected = Path(p)
-            black.reformat_one(
+            monochromatic.reformat_one(
                 path,
                 fast=True,
-                write_back=black.WriteBack.YES,
+                write_back=monochromatic.WriteBack.YES,
                 mode=DEFAULT_MODE,
                 report=report,
             )
             fsts.assert_called_once_with(
-                fast=True, write_back=black.WriteBack.YES, mode=DEFAULT_MODE, lines=()
+                fast=True, write_back=monochromatic.WriteBack.YES, mode=DEFAULT_MODE, lines=()
             )
-            # __BLACK_STDIN_FILENAME__ should have been stripped
-            report.done.assert_called_with(expected, black.Changed.YES)
+            # __monochromatic_STDIN_FILENAME__ should have been stripped
+            report.done.assert_called_with(expected, monochromatic.Changed.YES)
 
     @pytest.mark.incompatible_with_mypyc
     def test_reformat_one_with_stdin_filename_pyi(self) -> None:
         with patch(
-            "black.format_stdin_to_stdout",
-            return_value=lambda *args, **kwargs: black.Changed.YES,
+            "monochromatic.format_stdin_to_stdout",
+            return_value=lambda *args, **kwargs: monochromatic.Changed.YES,
         ) as fsts:
             report = MagicMock()
             p = "foo.pyi"
-            path = Path(f"__BLACK_STDIN_FILENAME__{p}")
+            path = Path(f"__monochromatic_STDIN_FILENAME__{p}")
             expected = Path(p)
-            black.reformat_one(
+            monochromatic.reformat_one(
                 path,
                 fast=True,
-                write_back=black.WriteBack.YES,
+                write_back=monochromatic.WriteBack.YES,
                 mode=DEFAULT_MODE,
                 report=report,
             )
             fsts.assert_called_once_with(
                 fast=True,
-                write_back=black.WriteBack.YES,
+                write_back=monochromatic.WriteBack.YES,
                 mode=replace(DEFAULT_MODE, is_pyi=True),
                 lines=(),
             )
-            # __BLACK_STDIN_FILENAME__ should have been stripped
-            report.done.assert_called_with(expected, black.Changed.YES)
+            # __monochromatic_STDIN_FILENAME__ should have been stripped
+            report.done.assert_called_with(expected, monochromatic.Changed.YES)
 
     @pytest.mark.incompatible_with_mypyc
     def test_reformat_one_with_stdin_filename_ipynb(self) -> None:
         with patch(
-            "black.format_stdin_to_stdout",
-            return_value=lambda *args, **kwargs: black.Changed.YES,
+            "monochromatic.format_stdin_to_stdout",
+            return_value=lambda *args, **kwargs: monochromatic.Changed.YES,
         ) as fsts:
             report = MagicMock()
             p = "foo.ipynb"
-            path = Path(f"__BLACK_STDIN_FILENAME__{p}")
+            path = Path(f"__monochromatic_STDIN_FILENAME__{p}")
             expected = Path(p)
-            black.reformat_one(
+            monochromatic.reformat_one(
                 path,
                 fast=True,
-                write_back=black.WriteBack.YES,
+                write_back=monochromatic.WriteBack.YES,
                 mode=DEFAULT_MODE,
                 report=report,
             )
             fsts.assert_called_once_with(
                 fast=True,
-                write_back=black.WriteBack.YES,
+                write_back=monochromatic.WriteBack.YES,
                 mode=replace(DEFAULT_MODE, is_ipynb=True),
                 lines=(),
             )
-            # __BLACK_STDIN_FILENAME__ should have been stripped
-            report.done.assert_called_with(expected, black.Changed.YES)
+            # __monochromatic_STDIN_FILENAME__ should have been stripped
+            report.done.assert_called_with(expected, monochromatic.Changed.YES)
 
     @pytest.mark.incompatible_with_mypyc
     def test_reformat_one_with_stdin_and_existing_path(self) -> None:
         with patch(
-            "black.format_stdin_to_stdout",
-            return_value=lambda *args, **kwargs: black.Changed.YES,
+            "monochromatic.format_stdin_to_stdout",
+            return_value=lambda *args, **kwargs: monochromatic.Changed.YES,
         ) as fsts:
             report = MagicMock()
-            # Even with an existing file, since we are forcing stdin, black
+            # Even with an existing file, since we are forcing stdin, monochromatic
             # should output to stdout and not modify the file inplace
             p = THIS_DIR / "data" / "cases" / "collections.py"
             # Make sure is_file actually returns True
             self.assertTrue(p.is_file())
-            path = Path(f"__BLACK_STDIN_FILENAME__{p}")
+            path = Path(f"__monochromatic_STDIN_FILENAME__{p}")
             expected = Path(p)
-            black.reformat_one(
+            monochromatic.reformat_one(
                 path,
                 fast=True,
-                write_back=black.WriteBack.YES,
+                write_back=monochromatic.WriteBack.YES,
                 mode=DEFAULT_MODE,
                 report=report,
             )
             fsts.assert_called_once()
-            # __BLACK_STDIN_FILENAME__ should have been stripped
-            report.done.assert_called_with(expected, black.Changed.YES)
+            # __monochromatic_STDIN_FILENAME__ should have been stripped
+            report.done.assert_called_with(expected, monochromatic.Changed.YES)
 
     def test_reformat_one_with_stdin_empty(self) -> None:
         cases = [
@@ -1359,7 +1359,7 @@ class BlackTestCase(BlackBaseTestCase):
                     return output
                 # It's something else (i.e. `decode_bytes()`) calling
                 # `io.TextIOWrapper()`, pass through to the original implementation.
-                # See discussion in https://github.com/psf/black/pull/2489
+                # See discussion in https://github.com/psf/monochromatic/pull/2489
                 return io_TextIOWrapper(*args, **kwargs)
 
             return get_output
@@ -1370,10 +1370,10 @@ class BlackTestCase(BlackBaseTestCase):
 
             with patch("io.TextIOWrapper", _new_wrapper(output, io_TextIOWrapper)):
                 try:
-                    black.format_stdin_to_stdout(
+                    monochromatic.format_stdin_to_stdout(
                         fast=True,
                         content=content,
-                        write_back=black.WriteBack.YES,
+                        write_back=monochromatic.WriteBack.YES,
                         mode=DEFAULT_MODE,
                     )
                 except io.UnsupportedOperation:
@@ -1381,49 +1381,49 @@ class BlackTestCase(BlackBaseTestCase):
                 assert output.getvalue() == expected
 
     def test_cli_unstable(self) -> None:
-        self.invokeBlack(["--unstable", "-c", "0"], exit_code=0)
-        self.invokeBlack(["--preview", "-c", "0"], exit_code=0)
+        self.invokemonochromatic(["--unstable", "-c", "0"], exit_code=0)
+        self.invokemonochromatic(["--preview", "-c", "0"], exit_code=0)
         # Must also pass --preview
-        self.invokeBlack(
+        self.invokemonochromatic(
             ["--enable-unstable-feature", "string_processing", "-c", "0"], exit_code=1
         )
-        self.invokeBlack(
+        self.invokemonochromatic(
             ["--preview", "--enable-unstable-feature", "string_processing", "-c", "0"],
             exit_code=0,
         )
-        self.invokeBlack(
+        self.invokemonochromatic(
             ["--unstable", "--enable-unstable-feature", "string_processing", "-c", "0"],
             exit_code=0,
         )
 
     def test_invalid_cli_regex(self) -> None:
         for option in ["--include", "--exclude", "--extend-exclude", "--force-exclude"]:
-            self.invokeBlack(["-", option, "**()(!!*)"], exit_code=2)
+            self.invokemonochromatic(["-", option, "**()(!!*)"], exit_code=2)
 
     def test_required_version_matches_version(self) -> None:
-        self.invokeBlack(
-            ["--required-version", black.__version__, "-c", "0"],
+        self.invokemonochromatic(
+            ["--required-version", monochromatic.__version__, "-c", "0"],
             exit_code=0,
             ignore_config=True,
         )
 
     def test_required_version_matches_partial_version(self) -> None:
-        self.invokeBlack(
-            ["--required-version", black.__version__.split(".")[0], "-c", "0"],
+        self.invokemonochromatic(
+            ["--required-version", monochromatic.__version__.split(".")[0], "-c", "0"],
             exit_code=0,
             ignore_config=True,
         )
 
     def test_required_version_does_not_match_on_minor_version(self) -> None:
-        self.invokeBlack(
-            ["--required-version", black.__version__.split(".")[0] + ".999", "-c", "0"],
+        self.invokemonochromatic(
+            ["--required-version", monochromatic.__version__.split(".")[0] + ".999", "-c", "0"],
             exit_code=1,
             ignore_config=True,
         )
 
     def test_required_version_does_not_match_version(self) -> None:
-        result = BlackRunner().invoke(
-            black.main,
+        result = monochromaticRunner().invoke(
+            monochromatic.main,
             ["--required-version", "20.99b", "-c", "0"],
         )
         self.assertEqual(result.exit_code, 1)
@@ -1435,7 +1435,7 @@ class BlackTestCase(BlackBaseTestCase):
             for nl in ["\n", "\r\n"]:
                 contents = nl.join(["def f(  ):", "    pass"])
                 test_file.write_bytes(contents.encode())
-                ff(test_file, write_back=black.WriteBack.YES)
+                ff(test_file, write_back=monochromatic.WriteBack.YES)
                 updated_contents: bytes = test_file.read_bytes()
                 self.assertIn(nl.encode(), updated_contents)
                 if nl == "\n":
@@ -1444,9 +1444,9 @@ class BlackTestCase(BlackBaseTestCase):
     def test_preserves_line_endings_via_stdin(self) -> None:
         for nl in ["\n", "\r\n"]:
             contents = nl.join(["def f(  ):", "    pass"])
-            runner = BlackRunner()
+            runner = monochromaticRunner()
             result = runner.invoke(
-                black.main, ["-", "--fast"], input=BytesIO(contents.encode("utf-8"))
+                monochromatic.main, ["-", "--fast"], input=BytesIO(contents.encode("utf-8"))
             )
             self.assertEqual(result.exit_code, 0)
             output = result.stdout_bytes
@@ -1462,7 +1462,7 @@ class BlackTestCase(BlackBaseTestCase):
                 (b"l\nl\r\n ", b"l\nl\n"),
             ):
                 test_file.write_bytes(data)
-                ff(test_file, write_back=black.WriteBack.YES)
+                ff(test_file, write_back=monochromatic.WriteBack.YES)
                 self.assertEqual(test_file.read_bytes(), expected)
 
     def test_root_logger_not_used_directly(self) -> None:
@@ -1481,18 +1481,18 @@ class BlackTestCase(BlackBaseTestCase):
             ff(THIS_DIR / "util.py")
 
     def test_invalid_config_return_code(self) -> None:
-        tmp_file = Path(black.dump_to_file())
+        tmp_file = Path(monochromatic.dump_to_file())
         try:
-            tmp_config = Path(black.dump_to_file())
+            tmp_config = Path(monochromatic.dump_to_file())
             tmp_config.unlink()
             args = ["--config", str(tmp_config), str(tmp_file)]
-            self.invokeBlack(args, exit_code=2, ignore_config=False)
+            self.invokemonochromatic(args, exit_code=2, ignore_config=False)
         finally:
             tmp_file.unlink()
 
     def test_parse_pyproject_toml(self) -> None:
         test_toml_file = THIS_DIR / "test.toml"
-        config = black.parse_pyproject_toml(str(test_toml_file))
+        config = monochromatic.parse_pyproject_toml(str(test_toml_file))
         self.assertEqual(config["verbose"], 1)
         self.assertEqual(config["check"], "no")
         self.assertEqual(config["diff"], "y")
@@ -1505,8 +1505,8 @@ class BlackTestCase(BlackBaseTestCase):
 
     def test_spellcheck_pyproject_toml(self) -> None:
         test_toml_file = THIS_DIR / "data" / "incorrect_spelling.toml"
-        result = BlackRunner().invoke(
-            black.main,
+        result = monochromaticRunner().invoke(
+            monochromatic.main,
             [
                 "--code=print('hello world')",
                 "--verbose",
@@ -1521,13 +1521,13 @@ class BlackTestCase(BlackBaseTestCase):
 
     def test_parse_pyproject_toml_project_metadata(self) -> None:
         for test_toml, expected in [
-            ("only_black_pyproject.toml", ["py310"]),
+            ("only_monochromatic_pyproject.toml", ["py310"]),
             ("only_metadata_pyproject.toml", ["py37", "py38", "py39", "py310"]),
             ("neither_pyproject.toml", None),
             ("both_pyproject.toml", ["py310"]),
         ]:
             test_toml_file = THIS_DIR / "data" / "project_metadata" / test_toml
-            config = black.parse_pyproject_toml(str(test_toml_file))
+            config = monochromatic.parse_pyproject_toml(str(test_toml_file))
             self.assertEqual(config.get("target_version"), expected)
 
     def test_infer_target_version(self) -> None:
@@ -1616,13 +1616,13 @@ class BlackTestCase(BlackBaseTestCase):
             (">3.10,<3.11", None),
         ]:
             test_toml = {"project": {"requires-python": version}}
-            result = black.files.infer_target_version(test_toml)
+            result = monochromatic.files.infer_target_version(test_toml)
             self.assertEqual(result, expected)
 
     def test_read_pyproject_toml(self) -> None:
         test_toml_file = THIS_DIR / "test.toml"
         fake_ctx = FakeContext()
-        black.read_pyproject_toml(fake_ctx, FakeParameter(), str(test_toml_file))
+        monochromatic.read_pyproject_toml(fake_ctx, FakeParameter(), str(test_toml_file))
         config = fake_ctx.default_map
         self.assertEqual(config["verbose"], "1")
         self.assertEqual(config["check"], "no")
@@ -1654,7 +1654,7 @@ class BlackTestCase(BlackBaseTestCase):
             fake_ctx.params["stdin_filename"] = str(src_python)
 
             with change_directory(root):
-                black.read_pyproject_toml(fake_ctx, FakeParameter(), None)
+                monochromatic.read_pyproject_toml(fake_ctx, FakeParameter(), None)
 
             config = fake_ctx.default_map
             self.assertEqual(config["verbose"], "1")
@@ -1677,28 +1677,28 @@ class BlackTestCase(BlackBaseTestCase):
             src_dir.mkdir()
 
             root_pyproject = root / "pyproject.toml"
-            root_pyproject.write_text("[tool.black]", encoding="utf-8")
+            root_pyproject.write_text("[tool.monochromatic]", encoding="utf-8")
             src_pyproject = src_dir / "pyproject.toml"
-            src_pyproject.write_text("[tool.black]", encoding="utf-8")
+            src_pyproject.write_text("[tool.monochromatic]", encoding="utf-8")
             src_python = src_dir / "foo.py"
             src_python.touch()
 
             self.assertEqual(
-                black.find_project_root((src_dir, test_dir)),
+                monochromatic.find_project_root((src_dir, test_dir)),
                 (root.resolve(), "pyproject.toml"),
             )
             self.assertEqual(
-                black.find_project_root((src_dir,)),
+                monochromatic.find_project_root((src_dir,)),
                 (src_dir.resolve(), "pyproject.toml"),
             )
             self.assertEqual(
-                black.find_project_root((src_python,)),
+                monochromatic.find_project_root((src_python,)),
                 (src_dir.resolve(), "pyproject.toml"),
             )
 
             with change_directory(test_dir):
                 self.assertEqual(
-                    black.find_project_root(("-",), stdin_filename="../src/a.py"),
+                    monochromatic.find_project_root(("-",), stdin_filename="../src/a.py"),
                     (src_dir.resolve(), "pyproject.toml"),
                 )
 
@@ -1710,20 +1710,20 @@ class BlackTestCase(BlackBaseTestCase):
 
             src_sub_python = src_sub / "bar.py"
 
-            # we skip src_sub_pyproject since it is missing the [tool.black] section
+            # we skip src_sub_pyproject since it is missing the [tool.monochromatic] section
             self.assertEqual(
-                black.find_project_root((src_sub_python,)),
+                monochromatic.find_project_root((src_sub_python,)),
                 (src_dir.resolve(), "pyproject.toml"),
             )
 
     @patch(
-        "black.files.find_user_pyproject_toml",
+        "monochromatic.files.find_user_pyproject_toml",
     )
     def test_find_pyproject_toml(self, find_user_pyproject_toml: MagicMock) -> None:
         find_user_pyproject_toml.side_effect = RuntimeError()
 
         with redirect_stderr(io.StringIO()) as stderr:
-            result = black.files.find_pyproject_toml(
+            result = monochromatic.files.find_pyproject_toml(
                 path_search_start=(str(Path.cwd().root),)
             )
 
@@ -1732,8 +1732,8 @@ class BlackTestCase(BlackBaseTestCase):
         assert "Ignoring user configuration" in err
 
     @patch(
-        "black.files.find_user_pyproject_toml",
-        black.files.find_user_pyproject_toml.__wrapped__,
+        "monochromatic.files.find_user_pyproject_toml",
+        monochromatic.files.find_user_pyproject_toml.__wrapped__,
     )
     def test_find_user_pyproject_toml_linux(self) -> None:
         if system() == "Windows":
@@ -1741,27 +1741,27 @@ class BlackTestCase(BlackBaseTestCase):
 
         # Test if XDG_CONFIG_HOME is checked
         with TemporaryDirectory() as workspace:
-            tmp_user_config = Path(workspace) / "black"
+            tmp_user_config = Path(workspace) / "monochromatic"
             with patch.dict("os.environ", {"XDG_CONFIG_HOME": workspace}):
                 self.assertEqual(
-                    black.files.find_user_pyproject_toml(), tmp_user_config.resolve()
+                    monochromatic.files.find_user_pyproject_toml(), tmp_user_config.resolve()
                 )
 
         # Test fallback for XDG_CONFIG_HOME
         with patch.dict("os.environ"):
             os.environ.pop("XDG_CONFIG_HOME", None)
-            fallback_user_config = Path("~/.config").expanduser() / "black"
+            fallback_user_config = Path("~/.config").expanduser() / "monochromatic"
             self.assertEqual(
-                black.files.find_user_pyproject_toml(), fallback_user_config.resolve()
+                monochromatic.files.find_user_pyproject_toml(), fallback_user_config.resolve()
             )
 
     def test_find_user_pyproject_toml_windows(self) -> None:
         if system() != "Windows":
             return
 
-        user_config_path = Path.home() / ".black"
+        user_config_path = Path.home() / ".monochromatic"
         self.assertEqual(
-            black.files.find_user_pyproject_toml(), user_config_path.resolve()
+            monochromatic.files.find_user_pyproject_toml(), user_config_path.resolve()
         )
 
     def test_bpo_33660_workaround(self) -> None:
@@ -1773,8 +1773,8 @@ class BlackTestCase(BlackBaseTestCase):
         root = Path("/")
         with change_directory(root):
             path = Path("workspace") / "project"
-            report = black.Report(verbose=True)
-            resolves_outside = black.resolves_outside_root_or_cannot_stat(
+            report = monochromatic.Report(verbose=True)
+            resolves_outside = monochromatic.resolves_outside_root_or_cannot_stat(
                 path, root, report
             )
             self.assertIs(resolves_outside, False)
@@ -1789,8 +1789,8 @@ class BlackTestCase(BlackBaseTestCase):
             junction_target_outside_of_root = root / ".."
             os.system(f"mklink /J {junction_dir} {junction_target_outside_of_root}")
 
-            report = black.Report(verbose=True)
-            resolves_outside = black.resolves_outside_root_or_cannot_stat(
+            report = monochromatic.Report(verbose=True)
+            resolves_outside = monochromatic.resolves_outside_root_or_cannot_stat(
                 junction_dir, root, report
             )
             # Manually delete for Python < 3.8
@@ -1800,8 +1800,8 @@ class BlackTestCase(BlackBaseTestCase):
 
     def test_newline_comment_interaction(self) -> None:
         source = "class A:\\\r\n# type: ignore\n pass\n"
-        output = black.format_str(source, mode=DEFAULT_MODE)
-        black.assert_stable(source, output, mode=DEFAULT_MODE)
+        output = monochromatic.format_str(source, mode=DEFAULT_MODE)
+        monochromatic.assert_stable(source, output, mode=DEFAULT_MODE)
 
     def test_bpo_2142_workaround(self) -> None:
         # https://bugs.python.org/issue2142
@@ -1810,13 +1810,13 @@ class BlackTestCase(BlackBaseTestCase):
         # read_data adds a trailing newline
         source = source.rstrip()
         expected, _ = read_data("miscellaneous", "missing_final_newline.diff")
-        tmp_file = Path(black.dump_to_file(source, ensure_final_newline=False))
+        tmp_file = Path(monochromatic.dump_to_file(source, ensure_final_newline=False))
         diff_header = re.compile(
             rf"{re.escape(str(tmp_file))}\t\d\d\d\d-\d\d-\d\d "
             r"\d\d:\d\d:\d\d\.\d\d\d\d\d\d\+\d\d:\d\d"
         )
         try:
-            result = BlackRunner().invoke(black.main, ["--diff", str(tmp_file)])
+            result = monochromaticRunner().invoke(monochromatic.main, ["--diff", str(tmp_file)])
             self.assertEqual(result.exit_code, 0)
         finally:
             os.unlink(tmp_file)
@@ -1838,40 +1838,40 @@ class BlackTestCase(BlackBaseTestCase):
         """Test the code option with no changes."""
         code = 'print("Hello world")\n'
         args = ["--code", code]
-        result = CliRunner().invoke(black.main, args)
+        result = CliRunner().invoke(monochromatic.main, args)
 
         self.compare_results(result, code, 0)
 
     def test_code_option_changed(self) -> None:
         """Test the code option when changes are required."""
         code = "print('hello world')"
-        formatted = black.format_str(code, mode=DEFAULT_MODE)
+        formatted = monochromatic.format_str(code, mode=DEFAULT_MODE)
 
         args = ["--code", code]
-        result = CliRunner().invoke(black.main, args)
+        result = CliRunner().invoke(monochromatic.main, args)
 
         self.compare_results(result, formatted, 0)
 
     def test_code_option_check(self) -> None:
         """Test the code option when check is passed."""
         args = ["--check", "--code", 'print("Hello world")\n']
-        result = CliRunner().invoke(black.main, args)
+        result = CliRunner().invoke(monochromatic.main, args)
         self.compare_results(result, "", 0)
 
     def test_code_option_check_changed(self) -> None:
         """Test the code option when changes are required, and check is passed."""
         args = ["--check", "--code", "print('hello world')"]
-        result = CliRunner().invoke(black.main, args)
+        result = CliRunner().invoke(monochromatic.main, args)
         self.compare_results(result, "", 1)
 
     def test_code_option_diff(self) -> None:
         """Test the code option when diff is passed."""
         code = "print('hello world')"
-        formatted = black.format_str(code, mode=DEFAULT_MODE)
+        formatted = monochromatic.format_str(code, mode=DEFAULT_MODE)
         result_diff = diff(code, formatted, "STDIN", "STDOUT")
 
         args = ["--diff", "--code", code]
-        result = CliRunner().invoke(black.main, args)
+        result = CliRunner().invoke(monochromatic.main, args)
 
         # Remove time from diff
         output = DIFF_TIME.sub("", result.output)
@@ -1882,13 +1882,13 @@ class BlackTestCase(BlackBaseTestCase):
     def test_code_option_color_diff(self) -> None:
         """Test the code option when color and diff are passed."""
         code = "print('hello world')"
-        formatted = black.format_str(code, mode=DEFAULT_MODE)
+        formatted = monochromatic.format_str(code, mode=DEFAULT_MODE)
 
         result_diff = diff(code, formatted, "STDIN", "STDOUT")
         result_diff = color_diff(result_diff)
 
         args = ["--diff", "--color", "--code", code]
-        result = CliRunner().invoke(black.main, args)
+        result = CliRunner().invoke(monochromatic.main, args)
 
         # Remove time from diff
         output = DIFF_TIME.sub("", result.output)
@@ -1899,26 +1899,26 @@ class BlackTestCase(BlackBaseTestCase):
     @pytest.mark.incompatible_with_mypyc
     def test_code_option_safe(self) -> None:
         """Test that the code option throws an error when the sanity checks fail."""
-        # Patch black.assert_equivalent to ensure the sanity checks fail
-        with patch.object(black, "assert_equivalent", side_effect=AssertionError):
+        # Patch monochromatic.assert_equivalent to ensure the sanity checks fail
+        with patch.object(monochromatic, "assert_equivalent", side_effect=AssertionError):
             code = 'print("Hello world")'
             error_msg = f"{code}\nerror: cannot format <string>: \n"
 
             args = ["--safe", "--code", code]
-            result = CliRunner().invoke(black.main, args)
+            result = CliRunner().invoke(monochromatic.main, args)
 
             assert error_msg == result.output
             assert result.exit_code == 123
 
     def test_code_option_fast(self) -> None:
         """Test that the code option ignores errors when the sanity checks fail."""
-        # Patch black.assert_equivalent to ensure the sanity checks fail
-        with patch.object(black, "assert_equivalent", side_effect=AssertionError):
+        # Patch monochromatic.assert_equivalent to ensure the sanity checks fail
+        with patch.object(monochromatic, "assert_equivalent", side_effect=AssertionError):
             code = 'print("Hello world")'
-            formatted = black.format_str(code, mode=DEFAULT_MODE)
+            formatted = monochromatic.format_str(code, mode=DEFAULT_MODE)
 
             args = ["--fast", "--code", code]
-            result = CliRunner().invoke(black.main, args)
+            result = CliRunner().invoke(monochromatic.main, args)
 
             self.compare_results(result, formatted, 0)
 
@@ -1927,11 +1927,11 @@ class BlackTestCase(BlackBaseTestCase):
         """
         Test that the code option finds the pyproject.toml in the current directory.
         """
-        with patch.object(black, "parse_pyproject_toml", return_value={}) as parse:
+        with patch.object(monochromatic, "parse_pyproject_toml", return_value={}) as parse:
             args = ["--code", "print"]
             # This is the only directory known to contain a pyproject.toml
             with change_directory(PROJECT_ROOT):
-                CliRunner().invoke(black.main, args)
+                CliRunner().invoke(monochromatic.main, args)
                 pyproject_path = Path(Path.cwd(), "pyproject.toml").resolve()
 
             assert (
@@ -1948,10 +1948,10 @@ class BlackTestCase(BlackBaseTestCase):
         """
         Test that the code option finds the pyproject.toml in the parent directory.
         """
-        with patch.object(black, "parse_pyproject_toml", return_value={}) as parse:
+        with patch.object(monochromatic, "parse_pyproject_toml", return_value={}) as parse:
             with change_directory(THIS_DIR):
                 args = ["--code", "print"]
-                CliRunner().invoke(black.main, args)
+                CliRunner().invoke(monochromatic.main, args)
 
                 pyproject_path = Path(Path().cwd().parent, "pyproject.toml").resolve()
                 assert (
@@ -1967,8 +1967,8 @@ class BlackTestCase(BlackBaseTestCase):
         """
         Test that an unexpected EOF SyntaxError is nicely presented.
         """
-        with pytest.raises(black.parsing.InvalidInput) as exc_info:
-            black.lib2to3_parse("print(", {})
+        with pytest.raises(monochromatic.parsing.InvalidInput) as exc_info:
+            monochromatic.lib2to3_parse("print(", {})
 
         exc_info.match("Cannot parse: 1:6: Unexpected EOF in multi-line statement")
 
@@ -1978,7 +1978,7 @@ class BlackTestCase(BlackBaseTestCase):
                 print  ( "OK" )
             """)
         args = ["--line-ranges=1-1", "--code", code]
-        result = CliRunner().invoke(black.main, args)
+        result = CliRunner().invoke(monochromatic.main, args)
 
         expected = textwrap.dedent("""\
             if a == b:
@@ -1991,9 +1991,9 @@ class BlackTestCase(BlackBaseTestCase):
             if  a  ==  b:
                 print  ( "OK" )
             """)
-        runner = BlackRunner()
+        runner = monochromaticRunner()
         result = runner.invoke(
-            black.main, ["--line-ranges=1-1", "-"], input=BytesIO(code.encode("utf-8"))
+            monochromatic.main, ["--line-ranges=1-1", "-"], input=BytesIO(code.encode("utf-8"))
         )
 
         expected = textwrap.dedent("""\
@@ -2013,7 +2013,7 @@ class BlackTestCase(BlackBaseTestCase):
                 encoding="utf-8",
             )
             args = ["--line-ranges=1-1", str(test_file)]
-            result = CliRunner().invoke(black.main, args)
+            result = CliRunner().invoke(monochromatic.main, args)
             assert not result.exit_code
 
             formatted = test_file.read_text(encoding="utf-8")
@@ -2030,7 +2030,7 @@ class BlackTestCase(BlackBaseTestCase):
             test2_file = Path(workspace) / "test2.py"
             test2_file.write_text("", encoding="utf-8")
             args = ["--line-ranges=1-1", str(test1_file), str(test2_file)]
-            result = CliRunner().invoke(black.main, args)
+            result = CliRunner().invoke(monochromatic.main, args)
             assert result.exit_code == 1
             assert "Cannot use --line-ranges to format multiple files" in result.output
 
@@ -2039,14 +2039,14 @@ class BlackTestCase(BlackBaseTestCase):
             test_file = Path(workspace) / "test.ipynb"
             test_file.write_text("{}", encoding="utf-8")
             args = ["--line-ranges=1-1", "--ipynb", str(test_file)]
-            result = CliRunner().invoke(black.main, args)
+            result = CliRunner().invoke(monochromatic.main, args)
             assert "Cannot use --line-ranges with ipynb files" in result.output
             assert result.exit_code == 1
 
     def test_line_ranges_in_pyproject_toml(self) -> None:
         config = THIS_DIR / "data" / "invalid_line_ranges.toml"
-        result = BlackRunner().invoke(
-            black.main, ["--code", "print()", "--config", str(config)]
+        result = monochromaticRunner().invoke(
+            monochromatic.main, ["--code", "print()", "--config", str(config)]
         )
         assert result.exit_code == 2
         assert result.stderr_bytes is not None
@@ -2080,18 +2080,18 @@ class TestCaching:
 
         # Force user_cache_dir to use the temporary directory for easier assertions
         patch_user_cache_dir = patch(
-            target="black.cache.user_cache_dir",
+            target="monochromatic.cache.user_cache_dir",
             autospec=True,
             return_value=str(workspace1),
         )
 
-        # If BLACK_CACHE_DIR is not set, use user_cache_dir
-        monkeypatch.delenv("BLACK_CACHE_DIR", raising=False)
+        # If monochromatic_CACHE_DIR is not set, use user_cache_dir
+        monkeypatch.delenv("monochromatic_CACHE_DIR", raising=False)
         with patch_user_cache_dir:
             assert get_cache_dir().parent == workspace1
 
         # If it is set, use the path provided in the env var.
-        monkeypatch.setenv("BLACK_CACHE_DIR", str(workspace2))
+        monkeypatch.setenv("monochromatic_CACHE_DIR", str(workspace2))
         assert get_cache_dir().parent == workspace2
 
     def test_cache_file_length(self) -> None:
@@ -2123,11 +2123,11 @@ class TestCaching:
         with cache_dir() as workspace:
             cache_file = get_cache_file(mode)
             cache_file.write_text("this is not a pickle", encoding="utf-8")
-            assert black.Cache.read(mode).file_data == {}
+            assert monochromatic.Cache.read(mode).file_data == {}
             src = (workspace / "test.py").resolve()
             src.write_text("print('hello')", encoding="utf-8")
-            invokeBlack([str(src)])
-            cache = black.Cache.read(mode)
+            invokemonochromatic([str(src)])
+            cache = monochromatic.Cache.read(mode)
             assert not cache.is_changed(src)
 
     def test_cache_single_file_already_cached(self) -> None:
@@ -2135,9 +2135,9 @@ class TestCaching:
         with cache_dir() as workspace:
             src = (workspace / "test.py").resolve()
             src.write_text("print('hello')", encoding="utf-8")
-            cache = black.Cache.read(mode)
+            cache = monochromatic.Cache.read(mode)
             cache.write([src])
-            invokeBlack([str(src)])
+            invokemonochromatic([str(src)])
             assert src.read_text(encoding="utf-8") == "print('hello')"
 
     @event_loop()
@@ -2151,12 +2151,12 @@ class TestCaching:
             one.write_text("print('hello')", encoding="utf-8")
             two = (workspace / "two.py").resolve()
             two.write_text("print('hello')", encoding="utf-8")
-            cache = black.Cache.read(mode)
+            cache = monochromatic.Cache.read(mode)
             cache.write([one])
-            invokeBlack([str(workspace)])
+            invokemonochromatic([str(workspace)])
             assert one.read_text(encoding="utf-8") == "print('hello')"
             assert two.read_text(encoding="utf-8") == 'print("hello")\n'
-            cache = black.Cache.read(mode)
+            cache = monochromatic.Cache.read(mode)
             assert not cache.is_changed(one)
             assert not cache.is_changed(two)
 
@@ -2168,13 +2168,13 @@ class TestCaching:
             src = (workspace / "test.py").resolve()
             src.write_text("print('hello')", encoding="utf-8")
             with (
-                patch.object(black.Cache, "read") as read_cache,
-                patch.object(black.Cache, "write") as write_cache,
+                patch.object(monochromatic.Cache, "read") as read_cache,
+                patch.object(monochromatic.Cache, "write") as write_cache,
             ):
                 cmd = [str(src), "--diff"]
                 if color:
                     cmd.append("--color")
-                invokeBlack(cmd)
+                invokemonochromatic(cmd)
                 cache_file = get_cache_file(mode)
                 assert cache_file.exists() is False
                 read_cache.assert_called_once()
@@ -2188,12 +2188,12 @@ class TestCaching:
                 src = (workspace / f"test{tag}.py").resolve()
                 src.write_text("print('hello')", encoding="utf-8")
             with patch(
-                "black.concurrency.Manager", wraps=multiprocessing.Manager
+                "monochromatic.concurrency.Manager", wraps=multiprocessing.Manager
             ) as mgr:
                 cmd = ["--diff", str(workspace)]
                 if color:
                     cmd.append("--color")
-                invokeBlack(cmd, exit_code=0)
+                invokemonochromatic(cmd, exit_code=0)
                 # this isn't quite doing what we want, but if it _isn't_
                 # called then we cannot be using the lock it provides
                 mgr.assert_called()
@@ -2202,7 +2202,7 @@ class TestCaching:
         mode = DEFAULT_MODE
         with cache_dir():
             result = CliRunner().invoke(
-                black.main, ["-"], input=BytesIO(b"print('hello')")
+                monochromatic.main, ["-"], input=BytesIO(b"print('hello')")
             )
             assert not result.exit_code
             cache_file = get_cache_file(mode)
@@ -2211,16 +2211,16 @@ class TestCaching:
     def test_read_cache_no_cachefile(self) -> None:
         mode = DEFAULT_MODE
         with cache_dir():
-            assert black.Cache.read(mode).file_data == {}
+            assert monochromatic.Cache.read(mode).file_data == {}
 
     def test_write_cache_read_cache(self) -> None:
         mode = DEFAULT_MODE
         with cache_dir() as workspace:
             src = (workspace / "test.py").resolve()
             src.touch()
-            write_cache = black.Cache.read(mode)
+            write_cache = monochromatic.Cache.read(mode)
             write_cache.write([src])
-            read_cache = black.Cache.read(mode)
+            read_cache = monochromatic.Cache.read(mode)
             assert not read_cache.is_changed(src)
 
     @pytest.mark.incompatible_with_mypyc
@@ -2233,9 +2233,9 @@ class TestCaching:
             uncached.touch()
             cached.touch()
             cached_but_changed.touch()
-            cache = black.Cache.read(DEFAULT_MODE)
+            cache = monochromatic.Cache.read(DEFAULT_MODE)
 
-            orig_func = black.Cache.get_file_data
+            orig_func = monochromatic.Cache.get_file_data
 
             def wrapped_func(path: Path) -> FileData:
                 if path == cached:
@@ -2244,7 +2244,7 @@ class TestCaching:
                     return FileData(0.0, 0, "")
                 raise AssertionError
 
-            with patch.object(black.Cache, "get_file_data", side_effect=wrapped_func):
+            with patch.object(monochromatic.Cache, "get_file_data", side_effect=wrapped_func):
                 cache.write([cached, cached_but_changed])
             todo, done = cache.filtered_cached({uncached, cached, cached_but_changed})
             assert todo == {uncached, cached_but_changed}
@@ -2256,7 +2256,7 @@ class TestCaching:
             src = (path / "test.py").resolve()
             src.write_text("print('hello')", encoding="utf-8")
             st = src.stat()
-            cache = black.Cache.read(DEFAULT_MODE)
+            cache = monochromatic.Cache.read(DEFAULT_MODE)
             cache.write([src])
             cached_file_data = cache.file_data[str(src)]
 
@@ -2276,7 +2276,7 @@ class TestCaching:
             assert done == {src}
             assert cached_file_data.st_mtime < st.st_mtime
             assert cached_file_data.st_size == st.st_size
-            assert cached_file_data.hash == black.Cache.hash_digest(src)
+            assert cached_file_data.hash == monochromatic.Cache.hash_digest(src)
 
             # Modify contents
             src.write_text("print('hello world')", encoding="utf-8")
@@ -2286,13 +2286,13 @@ class TestCaching:
             assert done == set()
             assert cached_file_data.st_mtime < new_st.st_mtime
             assert cached_file_data.st_size != new_st.st_size
-            assert cached_file_data.hash != black.Cache.hash_digest(src)
+            assert cached_file_data.hash != monochromatic.Cache.hash_digest(src)
 
     def test_write_cache_creates_directory_if_needed(self) -> None:
         mode = DEFAULT_MODE
         with cache_dir(exists=False) as workspace:
             assert not workspace.exists()
-            cache = black.Cache.read(mode)
+            cache = monochromatic.Cache.read(mode)
             cache.write([])
             assert workspace.exists()
 
@@ -2307,15 +2307,15 @@ class TestCaching:
             failing.write_text("not actually python", encoding="utf-8")
             clean = (workspace / "clean.py").resolve()
             clean.write_text('print("hello")\n', encoding="utf-8")
-            invokeBlack([str(workspace)], exit_code=123)
-            cache = black.Cache.read(mode)
+            invokemonochromatic([str(workspace)], exit_code=123)
+            cache = monochromatic.Cache.read(mode)
             assert cache.is_changed(failing)
             assert not cache.is_changed(clean)
 
     def test_write_cache_write_fail(self) -> None:
         mode = DEFAULT_MODE
         with cache_dir():
-            cache = black.Cache.read(mode)
+            cache = monochromatic.Cache.read(mode)
             with patch.object(Path, "open") as mock:
                 mock.side_effect = OSError
                 cache.write([])
@@ -2326,11 +2326,11 @@ class TestCaching:
         with cache_dir() as workspace:
             path = (workspace / "file.py").resolve()
             path.touch()
-            cache = black.Cache.read(mode)
+            cache = monochromatic.Cache.read(mode)
             cache.write([path])
-            one = black.Cache.read(mode)
+            one = monochromatic.Cache.read(mode)
             assert not one.is_changed(path)
-            two = black.Cache.read(short_mode)
+            two = monochromatic.Cache.read(short_mode)
             assert two.is_changed(path)
 
     def test_cache_key(self) -> None:
@@ -2383,7 +2383,7 @@ def assert_collected_sources(
         None if extend_exclude is None else compile_pattern(extend_exclude)
     )
     gs_force_exclude = None if force_exclude is None else compile_pattern(force_exclude)
-    collected = black.get_sources(
+    collected = monochromatic.get_sources(
         root=root or THIS_DIR,
         src=gs_src,
         quiet=False,
@@ -2392,7 +2392,7 @@ def assert_collected_sources(
         exclude=gs_exclude,
         extend_exclude=gs_extend_exclude,
         force_exclude=gs_force_exclude,
-        report=black.Report(),
+        report=monochromatic.Report(),
         stdin_filename=stdin_filename,
     )
     assert sorted(collected) == sorted(gs_expected)
@@ -2431,11 +2431,11 @@ class TestFileCollection:
         src = [root / "dir1", root / "dir2"]
         assert_collected_sources(src, expected, root=root)
 
-    @patch("black.find_project_root", lambda *args: (THIS_DIR.resolve(), None))
+    @patch("monochromatic.find_project_root", lambda *args: (THIS_DIR.resolve(), None))
     def test_exclude_for_issue_1572(self) -> None:
-        # Exclude shouldn't touch files that were explicitly given to Black through the
+        # Exclude shouldn't touch files that were explicitly given to monochromatic through the
         # CLI. Exclude is supposed to only apply to the recursive discovery of files.
-        # https://github.com/psf/black/issues/1572
+        # https://github.com/psf/monochromatic/issues/1572
         path = DATA_DIR / "include_exclude_tests"
         src = [path / "b/exclude/a.py"]
         expected = [path / "b/exclude/a.py"]
@@ -2445,7 +2445,7 @@ class TestFileCollection:
         path = THIS_DIR / "data" / "include_exclude_tests"
         include = re.compile(r"\.pyi?$")
         exclude = re.compile(r"")
-        report = black.Report()
+        report = monochromatic.Report()
         gitignore = PathSpec.from_lines(
             "gitwildmatch", ["exclude/", ".definitely_exclude"]
         )
@@ -2456,7 +2456,7 @@ class TestFileCollection:
         ]
         this_abs = THIS_DIR.resolve()
         sources.extend(
-            black.gen_python_files(
+            monochromatic.gen_python_files(
                 path.iterdir(),
                 this_abs,
                 include,
@@ -2475,8 +2475,8 @@ class TestFileCollection:
         path = Path(THIS_DIR / "data" / "nested_gitignore_tests")
         include = re.compile(r"\.pyi?$")
         exclude = re.compile(r"")
-        root_gitignore = black.files.get_gitignore(path)
-        report = black.Report()
+        root_gitignore = monochromatic.files.get_gitignore(path)
+        report = monochromatic.Report()
         expected: list[Path] = [
             Path(path / "x.py"),
             Path(path / "root/b.py"),
@@ -2485,7 +2485,7 @@ class TestFileCollection:
         ]
         this_abs = THIS_DIR.resolve()
         sources = list(
-            black.gen_python_files(
+            monochromatic.gen_python_files(
                 path.iterdir(),
                 this_abs,
                 include,
@@ -2501,7 +2501,7 @@ class TestFileCollection:
         assert sorted(expected) == sorted(sources)
 
     def test_nested_gitignore_directly_in_source_directory(self) -> None:
-        # https://github.com/psf/black/issues/2598
+        # https://github.com/psf/monochromatic/issues/2598
         path = Path(DATA_DIR / "nested_gitignore_tests")
         src = Path(path / "root" / "child")
         expected = [src / "a.py", src / "c.py"]
@@ -2510,8 +2510,8 @@ class TestFileCollection:
     def test_invalid_gitignore(self) -> None:
         path = THIS_DIR / "data" / "invalid_gitignore_tests"
         empty_config = path / "pyproject.toml"
-        result = BlackRunner().invoke(
-            black.main, ["--verbose", "--config", str(empty_config), str(path)]
+        result = monochromaticRunner().invoke(
+            monochromatic.main, ["--verbose", "--config", str(empty_config), str(path)]
         )
         assert result.exit_code == 1
         assert result.stderr_bytes is not None
@@ -2526,8 +2526,8 @@ class TestFileCollection:
     def test_invalid_nested_gitignore(self) -> None:
         path = THIS_DIR / "data" / "invalid_nested_gitignore_tests"
         empty_config = path / "pyproject.toml"
-        result = BlackRunner().invoke(
-            black.main, ["--verbose", "--config", str(empty_config), str(path)]
+        result = monochromaticRunner().invoke(
+            monochromatic.main, ["--verbose", "--config", str(empty_config), str(path)]
         )
         assert result.exit_code == 1
         assert result.stderr_bytes is not None
@@ -2619,9 +2619,9 @@ class TestFileCollection:
     @pytest.mark.incompatible_with_mypyc
     def test_symlinks(self) -> None:
         root = THIS_DIR.resolve()
-        include = re.compile(black.DEFAULT_INCLUDES)
-        exclude = re.compile(black.DEFAULT_EXCLUDES)
-        report = black.Report()
+        include = re.compile(monochromatic.DEFAULT_INCLUDES)
+        exclude = re.compile(monochromatic.DEFAULT_EXCLUDES)
+        report = monochromatic.Report()
         gitignore = PathSpec.from_lines("gitwildmatch", [])
 
         regular = MagicMock()
@@ -2665,7 +2665,7 @@ class TestFileCollection:
         ]
 
         files = list(
-            black.gen_python_files(
+            monochromatic.gen_python_files(
                 path.iterdir(),
                 root,
                 include,
@@ -2748,7 +2748,7 @@ class TestFileCollection:
 
             root = tmp / "root"
             root.mkdir()
-            (root / "pyproject.toml").write_text("[tool.black]", encoding="utf-8")
+            (root / "pyproject.toml").write_text("[tool.monochromatic]", encoding="utf-8")
 
             target = tmp / "outside_root" / "a.py"
             target.parent.mkdir()
@@ -2777,7 +2777,7 @@ class TestFileCollection:
     def test_get_sources_with_stdin_filename(self) -> None:
         src = ["-"]
         stdin_filename = str(THIS_DIR / "data/collections.py")
-        expected = [f"__BLACK_STDIN_FILENAME__{stdin_filename}"]
+        expected = [f"__monochromatic_STDIN_FILENAME__{stdin_filename}"]
         assert_collected_sources(
             src,
             root=THIS_DIR.resolve(),
@@ -2793,7 +2793,7 @@ class TestFileCollection:
         path = DATA_DIR / "include_exclude_tests"
         src = ["-"]
         stdin_filename = str(path / "b/exclude/a.py")
-        expected = [f"__BLACK_STDIN_FILENAME__{stdin_filename}"]
+        expected = [f"__monochromatic_STDIN_FILENAME__{stdin_filename}"]
         assert_collected_sources(
             src,
             root=THIS_DIR.resolve(),
@@ -2809,7 +2809,7 @@ class TestFileCollection:
         src = ["-"]
         path = THIS_DIR / "data" / "include_exclude_tests"
         stdin_filename = str(path / "b/exclude/a.py")
-        expected = [f"__BLACK_STDIN_FILENAME__{stdin_filename}"]
+        expected = [f"__monochromatic_STDIN_FILENAME__{stdin_filename}"]
         assert_collected_sources(
             src,
             root=THIS_DIR.resolve(),
@@ -2842,7 +2842,7 @@ class TestFileCollection:
             (tmp / "symlink.py").symlink_to(tmp / "exclude" / "a.py")
 
             stdin_filename = str(tmp / "symlink.py")
-            expected = [f"__BLACK_STDIN_FILENAME__{stdin_filename}"]
+            expected = [f"__monochromatic_STDIN_FILENAME__{stdin_filename}"]
             with change_directory(tmp):
                 assert_collected_sources(
                     src=["-"],
@@ -2864,31 +2864,31 @@ class TestDeFactoAPI:
     def test_format_str(self) -> None:
         # format_str and Mode should keep working
         assert (
-            black.format_str("print('hello')", mode=black.Mode()) == 'print("hello")\n'
+            monochromatic.format_str("print('hello')", mode=monochromatic.Mode()) == 'print("hello")\n'
         )
 
         # you can pass line length
         assert (
-            black.format_str("print('hello')", mode=black.Mode(line_length=42))
+            monochromatic.format_str("print('hello')", mode=monochromatic.Mode(line_length=42))
             == 'print("hello")\n'
         )
 
         # invalid input raises InvalidInput
-        with pytest.raises(black.InvalidInput):
-            black.format_str("syntax error", mode=black.Mode())
+        with pytest.raises(monochromatic.InvalidInput):
+            monochromatic.format_str("syntax error", mode=monochromatic.Mode())
 
     def test_format_file_contents(self) -> None:
         # You probably should be using format_str() instead, but let's keep
         # this one around since people do use it
         assert (
-            black.format_file_contents("x=1", fast=True, mode=black.Mode()) == "x = 1\n"
+            monochromatic.format_file_contents("x=1", fast=True, mode=monochromatic.Mode()) == "x = 1\n"
         )
 
-        with pytest.raises(black.NothingChanged):
-            black.format_file_contents("x = 1\n", fast=True, mode=black.Mode())
+        with pytest.raises(monochromatic.NothingChanged):
+            monochromatic.format_file_contents("x = 1\n", fast=True, mode=monochromatic.Mode())
 
 
-class TestASTSafety(BlackBaseTestCase):
+class TestASTSafety(monochromaticBaseTestCase):
     def check_ast_equivalence(
         self, source: str, dest: str, *, should_fail: bool = False
     ) -> None:
@@ -2897,13 +2897,13 @@ class TestASTSafety(BlackBaseTestCase):
         # ASTSafetyError.
         source = textwrap.dedent(source)
         dest = textwrap.dedent(dest)
-        black.parse_ast(source)
-        black.parse_ast(dest)
+        monochromatic.parse_ast(source)
+        monochromatic.parse_ast(dest)
         if should_fail:
             with self.assertRaises(ASTSafetyError):
-                black.assert_equivalent(source, dest)
+                monochromatic.assert_equivalent(source, dest)
         else:
-            black.assert_equivalent(source, dest)
+            monochromatic.assert_equivalent(source, dest)
 
     def test_assert_equivalent_basic(self) -> None:
         self.check_ast_equivalence("{}", "None", should_fail=True)
@@ -2988,7 +2988,7 @@ class TestASTSafety(BlackBaseTestCase):
         major, minor = sys.version_info[:2]
         if major < 3 or (major == 3 and minor < 12):
             pytest.skip("relies on 3.12+ syntax")
-        # https://github.com/psf/black/issues/4268
+        # https://github.com/psf/monochromatic/issues/4268
         self.check_ast_equivalence(
             """print(f"{"|".join([a,b,c])}")""",
             """print(f"{" | ".join([a,b,c])}")""",
@@ -3002,7 +3002,7 @@ class TestASTSafety(BlackBaseTestCase):
 
     def test_equivalency_ast_parse_failure_includes_error(self) -> None:
         with pytest.raises(ASTSafetyError) as err:
-            black.assert_equivalent("a«»a  = 1", "a«»a  = 1")
+            monochromatic.assert_equivalent("a«»a  = 1", "a«»a  = 1")
 
         err.match("--safe")
         # Unfortunately the SyntaxError message has changed in newer versions so we
@@ -3012,17 +3012,17 @@ class TestASTSafety(BlackBaseTestCase):
 
 
 try:
-    with open(black.__file__, encoding="utf-8") as _bf:
-        black_source_lines = _bf.readlines()
+    with open(monochromatic.__file__, encoding="utf-8") as _bf:
+        monochromatic_source_lines = _bf.readlines()
 except UnicodeDecodeError:
-    if not black.COMPILED:
+    if not monochromatic.COMPILED:
         raise
 
 
 def tracefunc(
     frame: types.FrameType, event: str, arg: Any
 ) -> Callable[[types.FrameType, str, Any], Any]:
-    """Show function calls `from black/__init__.py` as they happen.
+    """Show function calls `from monochromatic/__init__.py` as they happen.
 
     Register this with `sys.settrace()` in a test you're debugging.
     """
@@ -3034,10 +3034,10 @@ def tracefunc(
     filename = frame.f_code.co_filename
     lineno = frame.f_lineno
     func_sig_lineno = lineno - 1
-    funcname = black_source_lines[func_sig_lineno].strip()
+    funcname = monochromatic_source_lines[func_sig_lineno].strip()
     while funcname.startswith("@"):
         func_sig_lineno += 1
-        funcname = black_source_lines[func_sig_lineno].strip()
-    if "black/__init__.py" in filename:
+        funcname = monochromatic_source_lines[func_sig_lineno].strip()
+    if "monochromatic/__init__.py" in filename:
         print(f"{' ' * stack}{lineno}:{funcname}")
     return tracefunc

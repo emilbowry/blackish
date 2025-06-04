@@ -102,7 +102,7 @@ def transform_whitespace(
     token: pytokens.Token, source: str, prev_token: Optional[pytokens.Token]
 ) -> pytokens.Token:
     r"""
-    Black treats `\\\n` at the end of a line as a 'NL' token, while it
+    monochromatic treats `\\\n` at the end of a line as a 'NL' token, while it
     is ignored as whitespace in the regular Python parser.
     But, only the first one. If there's a `\\\n` following it
     (as in, a \ just by itself on a line), that is not made into NL.
@@ -151,7 +151,7 @@ def tokenize(source: str, grammar: Optional[Grammar] = None) -> Iterator[TokenIn
             token_str = source[token.start_index : token.end_index]
 
             if token.type == TokenType.newline and token_str == "":
-                # Black doesn't yield empty newline tokens at the end of a file
+                # monochromatic doesn't yield empty newline tokens at the end of a file
                 # if there's no newline at the end of a file.
                 prev_token = token
                 continue
@@ -166,7 +166,7 @@ def tokenize(source: str, grammar: Optional[Grammar] = None) -> Iterator[TokenIn
             source_line = lines[token.start_line - 1]
 
             if token.type == TokenType.identifier and token_str in ("async", "await"):
-                # Black uses `async` and `await` token types just for those two keywords
+                # monochromatic uses `async` and `await` token types just for those two keywords
                 while True:
                     next_token = next(token_iterator)
                     next_str = source[next_token.start_index : next_token.end_index]
@@ -208,7 +208,7 @@ def tokenize(source: str, grammar: Optional[Grammar] = None) -> Iterator[TokenIn
                 continue
 
             if token.type == TokenType.op and token_str == "...":
-                # Black doesn't have an ellipsis token yet, yield 3 DOTs instead
+                # monochromatic doesn't have an ellipsis token yet, yield 3 DOTs instead
                 assert token.start_line == token.end_line
                 assert token.end_col == token.start_col + 3
 

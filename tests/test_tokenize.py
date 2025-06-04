@@ -4,7 +4,7 @@ import sys
 import textwrap
 from dataclasses import dataclass
 
-import black
+import monochromatic
 from blib2to3.pgen2 import token, tokenize
 
 
@@ -103,5 +103,5 @@ if __name__ == "__main__":
     code = sys.stdin.read()
     tokens = get_tokens(code)
     text = f"assert_tokenizes({code!r}, {tokens!r})"
-    text = black.format_str(text, mode=black.Mode())
+    text = monochromatic.format_str(text, mode=monochromatic.Mode())
     print(textwrap.indent(text, "    "))

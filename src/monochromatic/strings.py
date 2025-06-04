@@ -8,7 +8,7 @@ from functools import lru_cache
 from re import Match, Pattern
 from typing import Final
 
-from black._width_table import WIDTH_TABLE
+from monochromatic._width_table import WIDTH_TABLE
 from blib2to3.pytree import Leaf
 
 STRING_PREFIX_CHARS: Final = "furbFURB"  # All possible string prefix characters.

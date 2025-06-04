@@ -18,18 +18,18 @@ from typing import Any, Optional
 
 from mypy_extensions import mypyc_attr
 
-from black import WriteBack, format_file_in_place
-from black.cache import Cache
-from black.mode import Mode
-from black.output import err
-from black.report import Changed, Report
+from monochromatic import WriteBack, format_file_in_place
+from monochromatic.cache import Cache
+from monochromatic.mode import Mode
+from monochromatic.output import err
+from monochromatic.report import Changed, Report
 
 
 def maybe_install_uvloop() -> None:
     """If our environment has uvloop installed we use it.
 
     This is called only from command-line entry points to avoid
-    interfering with the parent process if Black is used as a library.
+    interfering with the parent process if monochromatic is used as a library.
     """
     try:
         import uvloop
@@ -82,7 +82,7 @@ def reformat_many(
 
     executor: Executor
     if workers is None:
-        workers = int(os.environ.get("BLACK_NUM_WORKERS", 0))
+        workers = int(os.environ.get("monochromatic_NUM_WORKERS", 0))
         workers = workers or os.cpu_count() or 1
     if sys.platform == "win32":
         # Work around https://bugs.python.org/issue26903

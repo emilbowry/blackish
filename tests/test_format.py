@@ -5,8 +5,8 @@ from unittest.mock import patch
 
 import pytest
 
-import black
-from black.mode import TargetVersion
+import monochromatic
+from monochromatic.mode import TargetVersion
 from tests.util import (
     all_data_cases,
     assert_format,
@@ -18,7 +18,7 @@ from tests.util import (
 
 @pytest.fixture(autouse=True)
 def patch_dump_to_file(request: Any) -> Iterator[None]:
-    with patch("black.dump_to_file", dump_to_stderr):
+    with patch("monochromatic.dump_to_file", dump_to_stderr):
         yield
 
 
@@ -84,8 +84,8 @@ def test_empty() -> None:
 
 def test_patma_invalid() -> None:
     source, expected = read_data("miscellaneous", "pattern_matching_invalid")
-    mode = black.Mode(target_versions={black.TargetVersion.PY310})
-    with pytest.raises(black.parsing.InvalidInput) as exc_info:
+    mode = monochromatic.Mode(target_versions={monochromatic.TargetVersion.PY310})
+    with pytest.raises(monochromatic.parsing.InvalidInput) as exc_info:
         assert_format(source, expected, mode, minimum_version=(3, 10))
 
     exc_info.match(

@@ -29,15 +29,15 @@ from pathspec import PathSpec
 from pathspec.patterns.gitwildmatch import GitWildMatchPatternError
 
 from _black_version import version as __version__
-from black.cache import Cache
-from black.comments import normalize_fmt_off
-from black.const import (
+from monochromatic.cache import Cache
+from monochromatic.comments import normalize_fmt_off
+from monochromatic.const import (
     DEFAULT_EXCLUDES,
     DEFAULT_INCLUDES,
     DEFAULT_LINE_LENGTH,
     STDIN_PLACEHOLDER,
 )
-from black.files import (
+from monochromatic.files import (
     best_effort_relative_path,
     find_project_root,
     find_pyproject_toml,
@@ -49,7 +49,7 @@ from black.files import (
     resolves_outside_root_or_cannot_stat,
     wrap_stream_for_windows,
 )
-from black.handle_ipynb_magics import (
+from monochromatic.handle_ipynb_magics import (
     PYTHON_CELL_MAGICS,
     jupyter_dependencies_are_installed,
     mask_cell,
@@ -58,27 +58,27 @@ from black.handle_ipynb_magics import (
     unmask_cell,
     validate_cell,
 )
-from black.linegen import LN, LineGenerator, transform_line
-from black.lines import EmptyLineTracker, LinesBlock
-from black.mode import FUTURE_FLAG_TO_FEATURE, VERSION_TO_FEATURES, Feature
-from black.mode import Mode as Mode  # re-exported
-from black.mode import Preview, TargetVersion, supports_feature
-from black.nodes import STARS, is_number_token, is_simple_decorator_expression, syms
-from black.output import color_diff, diff, dump_to_file, err, ipynb_diff, out
-from black.parsing import (  # noqa F401
+from monochromatic.linegen import LN, LineGenerator, transform_line
+from monochromatic.lines import EmptyLineTracker, LinesBlock
+from monochromatic.mode import FUTURE_FLAG_TO_FEATURE, VERSION_TO_FEATURES, Feature
+from monochromatic.mode import Mode as Mode  # re-exported
+from monochromatic.mode import Preview, TargetVersion, supports_feature
+from monochromatic.nodes import STARS, is_number_token, is_simple_decorator_expression, syms
+from monochromatic.output import color_diff, diff, dump_to_file, err, ipynb_diff, out
+from monochromatic.parsing import (  # noqa F401
     ASTSafetyError,
     InvalidInput,
     lib2to3_parse,
     parse_ast,
     stringify_ast,
 )
-from black.ranges import (
+from monochromatic.ranges import (
     adjusted_lines,
     convert_unchanged_lines,
     parse_line_ranges,
     sanitized_lines,
 )
-from black.report import Changed, NothingChanged, Report
+from monochromatic.report import Changed, NothingChanged, Report
 from blib2to3.pgen2 import token
 from blib2to3.pytree import Leaf, Node
 
@@ -117,7 +117,7 @@ FileMode = Mode
 def read_pyproject_toml(
     ctx: click.Context, param: click.Parameter, value: Optional[str]
 ) -> Optional[str]:
-    """Inject Black configuration from "pyproject.toml" into defaults in `ctx`.
+    """Inject monochromatic configuration from "pyproject.toml" into defaults in `ctx`.
 
     Returns the path to a successfully found and read configuration file, None
     otherwise.
@@ -141,7 +141,7 @@ def read_pyproject_toml(
     else:
         spellcheck_pyproject_toml_keys(ctx, list(config), value)
         # Sanitize the values to be Click friendly. For more information please see:
-        # https://github.com/psf/black/issues/1458
+        # https://github.com/psf/monochromatic/issues/1458
         # https://github.com/pallets/click/issues/1567
         config = {
             k: str(v) if not isinstance(v, (list, dict)) else v
@@ -257,10 +257,10 @@ def validate_regex(
     callback=target_version_option_callback,
     multiple=True,
     help=(
-        "Python versions that should be supported by Black's output. You should"
-        " include all versions that your code supports. By default, Black will infer"
+        "Python versions that should be supported by monochromatic's output. You should"
+        " include all versions that your code supports. By default, monochromatic will infer"
         " target versions from the project metadata in pyproject.toml. If this does"
-        " not yield conclusive results, Black will use per-file auto-detection."
+        " not yield conclusive results, monochromatic will use per-file auto-detection."
     ),
 )
 @click.option(
@@ -311,7 +311,7 @@ def validate_regex(
     "--preview",
     is_flag=True,
     help=(
-        "Enable potentially disruptive style changes that may be added to Black's main"
+        "Enable potentially disruptive style changes that may be added to monochromatic's main"
         " functionality in the next major release."
     ),
 )
@@ -320,7 +320,7 @@ def validate_regex(
     is_flag=True,
     help=(
         "Enable potentially disruptive style changes that have known bugs or are not"
-        " currently expected to make it into the stable style Black's next major"
+        " currently expected to make it into the stable style monochromatic's next major"
         " release. Implies --preview."
     ),
 )
@@ -349,7 +349,7 @@ def validate_regex(
     is_flag=True,
     help=(
         "Don't write the files back, just output a diff to indicate what changes"
-        " Black would've made. They are printed to stdout so capturing them is simple."
+        " monochromatic would've made. They are printed to stdout so capturing them is simple."
     ),
 )
 @click.option(
@@ -362,7 +362,7 @@ def validate_regex(
     multiple=True,
     metavar="START-END",
     help=(
-        "When specified, Black will try its best to only format these lines. This"
+        "When specified, monochromatic will try its best to only format these lines. This"
         " option can be specified multiple times, and a union of the lines will be"
         " formatted. Each range must be specified as two integers connected by a `-`:"
         " `<START>-<END>`. The `<START>` and `<END>` integer indices are 1-based and"
@@ -374,7 +374,7 @@ def validate_regex(
     "--fast/--safe",
     is_flag=True,
     help=(
-        "By default, Black performs an AST safety check after formatting your code."
+        "By default, monochromatic performs an AST safety check after formatting your code."
         " The --fast flag turns off this check and the --safe flag explicitly enables"
         " it. [default: --safe]"
     ),
@@ -383,9 +383,9 @@ def validate_regex(
     "--required-version",
     type=str,
     help=(
-        "Require a specific version of Black to be running. This is useful for"
+        "Require a specific version of monochromatic to be running. This is useful for"
         " ensuring that all contributors to your project are using the same"
-        " version, because different versions of Black may format code a little"
+        " version, because different versions of monochromatic may format code a little"
         " differently. This option can be set in a configuration file for consistent"
         " results across environments."
     ),
@@ -398,7 +398,7 @@ def validate_regex(
         "A regular expression that matches files and directories that should be"
         " excluded on recursive searches. An empty value means no paths are excluded."
         " Use forward slashes for directories on all platforms (Windows, too)."
-        " By default, Black also ignores all paths listed in .gitignore. Changing this"
+        " By default, monochromatic also ignores all paths listed in .gitignore. Changing this"
         f" value will override all default exclusions. [default: {DEFAULT_EXCLUDES}]"
     ),
     show_default=False,
@@ -419,7 +419,7 @@ def validate_regex(
     help=(
         "Like --exclude, but files and directories matching this regex will be excluded"
         " even when they are passed explicitly as arguments. This is useful when"
-        " invoking Black programmatically on changed files, such as in a pre-commit"
+        " invoking monochromatic programmatically on changed files, such as in a pre-commit"
         " hook or editor plugin."
     ),
 )
@@ -428,7 +428,7 @@ def validate_regex(
     type=str,
     is_eager=True,
     help=(
-        "The name of the file when passing it through stdin. Useful to make sure Black"
+        "The name of the file when passing it through stdin. Useful to make sure monochromatic"
         " will respect the --force-exclude option on some editors that rely on using"
         " stdin."
     ),
@@ -453,9 +453,9 @@ def validate_regex(
     type=click.IntRange(min=1),
     default=None,
     help=(
-        "When Black formats multiple files, it may use a process pool to speed up"
+        "When monochromatic formats multiple files, it may use a process pool to speed up"
         " formatting. This option controls the number of parallel workers. This can"
-        " also be specified via the BLACK_NUM_WORKERS environment variable. Defaults"
+        " also be specified via the monochromatic_NUM_WORKERS environment variable. Defaults"
         " to the number of CPUs in the system."
     ),
 )
@@ -474,7 +474,7 @@ def validate_regex(
     is_flag=True,
     help=(
         "Emit messages about files that were not changed or were ignored due to"
-        " exclusion patterns. If Black is using a configuration file, a message"
+        " exclusion patterns. If monochromatic is using a configuration file, a message"
         " detailing which one it is using will be emitted."
     ),
 )
@@ -543,10 +543,10 @@ def main(  # noqa: C901
     """The uncompromising code formatter."""
     ctx.ensure_object(dict)
 
-    assert sys.version_info >= (3, 9), "Black requires Python 3.9+"
+    assert sys.version_info >= (3, 9), "monochromatic requires Python 3.9+"
     if sys.version_info[:3] == (3, 12, 5):
         out(
-            "Python 3.12.5 has a memory safety issue that can cause Black's "
+            "Python 3.12.5 has a memory safety issue that can cause monochromatic's "
             "AST safety checks to fail. "
             "Please upgrade to Python 3.12.6 or downgrade to Python 3.12.4"
         )
@@ -701,7 +701,7 @@ def main(  # noqa: C901
                 lines=lines,
             )
         else:
-            from black.concurrency import reformat_many
+            from monochromatic.concurrency import reformat_many
 
             if lines:
                 err("Cannot use --line-ranges to format multiple files.")
@@ -1177,18 +1177,18 @@ def format_str(
     `mode` determines formatting options, such as how many characters per line are
     allowed.  Example:
 
-    >>> import black
-    >>> print(black.format_str("def f(arg:str='')->None:...", mode=black.Mode()))
+    >>> import monochromatic
+    >>> print(monochromatic.format_str("def f(arg:str='')->None:...", mode=monochromatic.Mode()))
     def f(arg: str = "") -> None:
         ...
 
     A more complex example:
 
     >>> print(
-    ...   black.format_str(
+    ...   monochromatic.format_str(
     ...     "def f(arg:str='')->None: hey",
-    ...     mode=black.Mode(
-    ...       target_versions={black.TargetVersion.PY36},
+    ...     mode=monochromatic.Mode(
+    ...       target_versions={monochromatic.TargetVersion.PY36},
     ...       line_length=10,
     ...       string_normalization=False,
     ...       is_pyi=False,
@@ -1504,9 +1504,9 @@ def get_future_imports(node: Node) -> set[str]:
     return imports
 
 
-def _black_info() -> str:
+def _monochromatic_info() -> str:
     return (
-        f"Black {__version__} on "
+        f"monochromatic {__version__} on "
         f"Python ({platform.python_implementation()}) {platform.python_version()}"
     )
 
@@ -1519,7 +1519,7 @@ def assert_equivalent(src: str, dst: str) -> None:
         raise ASTSafetyError(
             "cannot use --safe with this file; failed to parse source file AST: "
             f"{exc}\n"
-            "This could be caused by running Black with an older Python version "
+            "This could be caused by running monochromatic with an older Python version "
             "that does not support new syntax used in your source file."
         ) from exc
 
@@ -1528,8 +1528,8 @@ def assert_equivalent(src: str, dst: str) -> None:
     except Exception as exc:
         log = dump_to_file("".join(traceback.format_tb(exc.__traceback__)), dst)
         raise ASTSafetyError(
-            f"INTERNAL ERROR: {_black_info()} produced invalid code: {exc}. "
-            "Please report a bug on https://github.com/psf/black/issues.  "
+            f"INTERNAL ERROR: {_monochromatic_info()} produced invalid code: {exc}. "
+            "Please report a bug on https://github.com/psf/monochromatic/issues.  "
             f"This invalid output might be helpful: {log}"
         ) from None
 
@@ -1538,8 +1538,8 @@ def assert_equivalent(src: str, dst: str) -> None:
     if src_ast_str != dst_ast_str:
         log = dump_to_file(diff(src_ast_str, dst_ast_str, "src", "dst"))
         raise ASTSafetyError(
-            f"INTERNAL ERROR: {_black_info()} produced code that is not equivalent to"
-            " the source.  Please report a bug on https://github.com/psf/black/issues."
+            f"INTERNAL ERROR: {_monochromatic_info()} produced code that is not equivalent to"
+            " the source.  Please report a bug on https://github.com/psf/monochromatic/issues."
             f"  This diff might be helpful: {log}"
         ) from None
 
@@ -1553,7 +1553,7 @@ def assert_stable(
         # to the formatted lines before re-formatting the previously formatted result.
         # Due to less-ideal diff algorithm, some edge cases produce incorrect new line
         # ranges. Hence for now, we skip the stable check.
-        # See https://github.com/psf/black/issues/4033 for context.
+        # See https://github.com/psf/monochromatic/issues/4033 for context.
         return
     # We shouldn't call format_str() here, because that formats the string
     # twice and may hide a bug where we bounce back and forth between two
@@ -1566,9 +1566,9 @@ def assert_stable(
             diff(dst, newdst, "first pass", "second pass"),
         )
         raise AssertionError(
-            f"INTERNAL ERROR: {_black_info()} produced different code on the second"
+            f"INTERNAL ERROR: {_monochromatic_info()} produced different code on the second"
             " pass of the formatter.  Please report a bug on"
-            f" https://github.com/psf/black/issues.  This diff might be helpful: {log}"
+            f" https://github.com/psf/monochromatic/issues.  This diff might be helpful: {log}"
         ) from None
 
 

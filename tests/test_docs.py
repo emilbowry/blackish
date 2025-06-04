@@ -12,9 +12,9 @@ from typing import Optional
 
 import pytest
 
-from black.mode import UNSTABLE_FEATURES, Preview
+from monochromatic.mode import UNSTABLE_FEATURES, Preview
 
-DOCS_PATH = Path("docs/the_black_code_style/future_style.md")
+DOCS_PATH = Path("docs/the_monochromatic_code_style/future_style.md")
 
 
 def check_feature_list(

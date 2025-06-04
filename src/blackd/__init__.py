@@ -13,15 +13,15 @@ try:
 except ImportError as ie:
     raise ImportError(
         f"aiohttp dependency is not installed: {ie}. "
-        + "Please re-install black with the '[d]' extra install "
-        + "to obtain aiohttp_cors: `pip install black[d]`"
+        + "Please re-install monochromatic with the '[d]' extra install "
+        + "to obtain aiohttp_cors: `pip install monochromatic[d]`"
     ) from None
 
 import click
 
-import black
+import monochromatic
 from _black_version import version as __version__
-from black.concurrency import maybe_install_uvloop
+from monochromatic.concurrency import maybe_install_uvloop
 
 # This is used internally by tests to shut down the server prematurely
 _stop_signal = asyncio.Event()
@@ -39,7 +39,7 @@ ENABLE_UNSTABLE_FEATURE = "X-Enable-Unstable-Feature"
 FAST_OR_SAFE_HEADER = "X-Fast-Or-Safe"
 DIFF_HEADER = "X-Diff"
 
-BLACK_HEADERS = [
+monochromatic_HEADERS = [
     PROTOCOL_VERSION_HEADER,
     LINE_LENGTH_HEADER,
     PYTHON_VARIANT_HEADER,
@@ -54,7 +54,7 @@ BLACK_HEADERS = [
 ]
 
 # Response headers
-BLACK_VERSION_HEADER = "X-Black-Version"
+monochromatic_VERSION_HEADER = "X-monochromatic-Version"
 
 
 class HeaderError(Exception):
@@ -76,12 +76,12 @@ class InvalidVariantHeader(Exception):
 @click.option(
     "--bind-port", type=int, help="Port to listen on", default=45484, show_default=True
 )
-@click.version_option(version=black.__version__)
+@click.version_option(version=monochromatic.__version__)
 def main(bind_host: str, bind_port: int) -> None:
     logging.basicConfig(level=logging.INFO)
     app = make_app()
-    ver = black.__version__
-    black.out(f"blackd version {ver} listening on {bind_host} port {bind_port}")
+    ver = monochromatic.__version__
+    monochromatic.out(f"monochromaticd version {ver} listening on {bind_host} port {bind_port}")
     web.run_app(app, host=bind_host, port=bind_port, handle_signals=True, print=None)
 
 
@@ -92,14 +92,14 @@ def executor() -> Executor:
 
 def make_app() -> web.Application:
     app = web.Application(
-        middlewares=[cors(allow_headers=(*BLACK_HEADERS, "Content-Type"))]
+        middlewares=[cors(allow_headers=(*monochromatic_HEADERS, "Content-Type"))]
     )
     app.add_routes([web.post("/", partial(handle, executor=executor()))])
     return app
 
 
 async def handle(request: web.Request, executor: Executor) -> web.Response:
-    headers = {BLACK_VERSION_HEADER: __version__}
+    headers = {monochromatic_VERSION_HEADER: __version__}
     try:
         if request.headers.get(PROTOCOL_VERSION_HEADER, "1") != "1":
             return web.Response(
@@ -126,7 +126,7 @@ async def handle(request: web.Request, executor: Executor) -> web.Response:
 
         loop = asyncio.get_event_loop()
         formatted_str = await loop.run_in_executor(
-            executor, partial(black.format_file_contents, req_str, fast=fast, mode=mode)
+            executor, partial(monochromatic.format_file_contents, req_str, fast=fast, mode=mode)
         )
 
         # Preserve CRLF line endings
@@ -135,7 +135,7 @@ async def handle(request: web.Request, executor: Executor) -> web.Response:
             formatted_str = formatted_str.replace("\n", "\r\n")
             # If, after swapping line endings, nothing changed, then say so
             if formatted_str == req_str:
-                raise black.NothingChanged
+                raise monochromatic.NothingChanged
 
         # Put the source first line back
         req_str = header + req_str
@@ -150,7 +150,7 @@ async def handle(request: web.Request, executor: Executor) -> web.Response:
             loop = asyncio.get_event_loop()
             formatted_str = await loop.run_in_executor(
                 executor,
-                partial(black.diff, req_str, formatted_str, src_name, dst_name),
+                partial(monochromatic.diff, req_str, formatted_str, src_name, dst_name),
             )
 
         return web.Response(
@@ -159,18 +159,18 @@ async def handle(request: web.Request, executor: Executor) -> web.Response:
             headers=headers,
             text=formatted_str,
         )
-    except black.NothingChanged:
+    except monochromatic.NothingChanged:
         return web.Response(status=204, headers=headers)
-    except black.InvalidInput as e:
+    except monochromatic.InvalidInput as e:
         return web.Response(status=400, headers=headers, text=str(e))
     except Exception as e:
         logging.exception("Exception during handling a request")
         return web.Response(status=500, headers=headers, text=str(e))
 
 
-def parse_mode(headers: MultiMapping[str]) -> black.Mode:
+def parse_mode(headers: MultiMapping[str]) -> monochromatic.Mode:
     try:
-        line_length = int(headers.get(LINE_LENGTH_HEADER, black.DEFAULT_LINE_LENGTH))
+        line_length = int(headers.get(LINE_LENGTH_HEADER, monochromatic.DEFAULT_LINE_LENGTH))
     except ValueError:
         raise HeaderError("Invalid line length header value") from None
 
@@ -194,19 +194,19 @@ def parse_mode(headers: MultiMapping[str]) -> black.Mode:
 
     preview = bool(headers.get(PREVIEW, False))
     unstable = bool(headers.get(UNSTABLE, False))
-    enable_features: set[black.Preview] = set()
+    enable_features: set[monochromatic.Preview] = set()
     enable_unstable_features = headers.get(ENABLE_UNSTABLE_FEATURE, "").split(",")
     for piece in enable_unstable_features:
         piece = piece.strip()
         if piece:
             try:
-                enable_features.add(black.Preview[piece])
+                enable_features.add(monochromatic.Preview[piece])
             except KeyError:
                 raise HeaderError(
                     f"Invalid value for {ENABLE_UNSTABLE_FEATURE}: {piece}",
                 ) from None
 
-    return black.FileMode(
+    return monochromatic.FileMode(
         target_versions=versions,
         is_pyi=pyi,
         line_length=line_length,
@@ -219,7 +219,7 @@ def parse_mode(headers: MultiMapping[str]) -> black.Mode:
     )
 
 
-def parse_python_variant_header(value: str) -> tuple[bool, set[black.TargetVersion]]:
+def parse_python_variant_header(value: str) -> tuple[bool, set[monochromatic.TargetVersion]]:
     if value == "pyi":
         return True, set()
     else:
@@ -244,9 +244,9 @@ def parse_python_variant_header(value: str) -> tuple[bool, set[black.TargetVersi
                     # Default to lowest supported minor version.
                     minor = 7 if major == 2 else 3
                 version_str = f"PY{major}{minor}"
-                if major == 3 and not hasattr(black.TargetVersion, version_str):
+                if major == 3 and not hasattr(monochromatic.TargetVersion, version_str):
                     raise InvalidVariantHeader(f"3.{minor} is not supported")
-                versions.add(black.TargetVersion[version_str])
+                versions.add(monochromatic.TargetVersion[version_str])
             except (KeyError, ValueError):
                 raise InvalidVariantHeader("expected e.g. '3.7', 'py3.5'") from None
         return False, versions

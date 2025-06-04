@@ -13,8 +13,8 @@ from typing import NamedTuple
 from platformdirs import user_cache_dir
 
 from _black_version import version as __version__
-from black.mode import Mode
-from black.output import err
+from monochromatic.mode import Mode
+from monochromatic.output import err
 
 if sys.version_info >= (3, 11):
     from typing import Self
@@ -29,18 +29,18 @@ class FileData(NamedTuple):
 
 
 def get_cache_dir() -> Path:
-    """Get the cache directory used by black.
+    """Get the cache directory used by monochromatic.
 
-    Users can customize this directory on all systems using `BLACK_CACHE_DIR`
+    Users can customize this directory on all systems using `monochromatic_CACHE_DIR`
     environment variable. By default, the cache directory is the user cache directory
-    under the black application.
+    under the monochromatic application.
 
-    This result is immediately set to a constant `black.cache.CACHE_DIR` as to avoid
+    This result is immediately set to a constant `monochromatic.cache.CACHE_DIR` as to avoid
     repeated calls.
     """
     # NOTE: Function mostly exists as a clean way to test getting the cache directory.
-    default_cache_dir = user_cache_dir("black")
-    cache_dir = Path(os.environ.get("BLACK_CACHE_DIR", default_cache_dir))
+    default_cache_dir = user_cache_dir("monochromatic")
+    cache_dir = Path(os.environ.get("monochromatic_CACHE_DIR", default_cache_dir))
     cache_dir = cache_dir / __version__
     return cache_dir
 

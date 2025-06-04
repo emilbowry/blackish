@@ -11,10 +11,10 @@ from typing import Any, ClassVar, Final, Literal, Optional, TypeVar, Union
 
 from mypy_extensions import trait
 
-from black.comments import contains_pragma_comment
-from black.lines import Line, append_leaves
-from black.mode import Feature, Mode
-from black.nodes import (
+from monochromatic.comments import contains_pragma_comment
+from monochromatic.lines import Line, append_leaves
+from monochromatic.mode import Feature, Mode
+from monochromatic.nodes import (
     CLOSING_BRACKETS,
     OPENING_BRACKETS,
     STANDALONE_COMMENT,
@@ -26,8 +26,8 @@ from black.nodes import (
     replace_child,
     syms,
 )
-from black.rusty import Err, Ok, Result
-from black.strings import (
+from monochromatic.rusty import Err, Ok, Result
+from monochromatic.strings import (
     assert_is_leaf_string,
     count_chars_in_width,
     get_string_prefix,
@@ -612,7 +612,7 @@ class StringMerger(StringTransformer, CustomSplitMapMixin):
         # merge. We will then later go through our final result and use the
         # various instances of BREAK_MARK we find to add the right values to
         # the custom split map.
-        BREAK_MARK = "@@@@@ BLACK BREAKPOINT MARKER @@@@@"
+        BREAK_MARK = "@@@@@ monochromatic BREAKPOINT MARKER @@@@@"
 
         QUOTE = LL[string_idx].value[-1]
 
@@ -1049,7 +1049,7 @@ class BaseStringSplitter(StringTransformer):
 
     Requirements:
         * The target string value is responsible for the line going over the
-          line length limit. It follows that after all of black's other line
+          line length limit. It follows that after all of monochromatic's other line
           split methods have been exhausted, this line (or one of the resulting
           lines after all line splits are performed) would still be over the
           line_length limit unless we split this string.
@@ -1366,7 +1366,7 @@ def _toggle_fexpr_quotes(fstring: str, old_quote: str) -> str:
 
     NOTE: If PEP 701 is accepted, above statement will no longer be true.
     Though if quotes can be reused, we can simply reuse them without updates or
-    escaping, once Black figures out how to parse the new grammar.
+    escaping, once monochromatic figures out how to parse the new grammar.
     """
     new_quote = "'" if old_quote == '"' else '"'
     parts = []

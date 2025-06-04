@@ -1,6 +1,6 @@
-"""Data structures configuring Black behavior.
+"""Data structures configuring monochromatic behavior.
 
-Mostly around Python language feature support per version and Black configuration
+Mostly around Python language feature support per version and monochromatic configuration
 chosen by the user.
 """
 
@@ -10,7 +10,7 @@ from hashlib import sha256
 from operator import attrgetter
 from typing import Final
 
-from black.const import DEFAULT_LINE_LENGTH
+from monochromatic.const import DEFAULT_LINE_LENGTH
 
 
 class TargetVersion(Enum):
@@ -197,7 +197,7 @@ class Preview(Enum):
     """Individual preview style features."""
 
     # NOTE: string_processing requires wrap_long_dict_values_in_parens
-    # for https://github.com/psf/black/issues/3117 to be fixed.
+    # for https://github.com/psf/monochromatic/issues/3117 to be fixed.
     string_processing = auto()
     hug_parens_with_braces_and_square_brackets = auto()
     wrap_long_dict_values_in_parens = auto()
@@ -207,7 +207,7 @@ class Preview(Enum):
 
 
 UNSTABLE_FEATURES: set[Preview] = {
-    # Many issues, see summary in https://github.com/psf/black/issues/4042
+    # Many issues, see summary in https://github.com/psf/monochromatic/issues/4042
     Preview.string_processing,
     # See issue #4159
     Preview.multiline_string_handling,

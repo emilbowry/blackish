@@ -1,8 +1,8 @@
 # Test cases from:
-# - https://github.com/psf/black/issues/1798
-# - https://github.com/psf/black/issues/1499
-# - https://github.com/psf/black/issues/1211
-# - https://github.com/psf/black/issues/563
+# - https://github.com/psf/monochromatic/issues/1798
+# - https://github.com/psf/monochromatic/issues/1499
+# - https://github.com/psf/monochromatic/issues/1211
+# - https://github.com/psf/monochromatic/issues/563
 
 (
     lambda

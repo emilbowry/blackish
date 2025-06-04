@@ -7,25 +7,25 @@ from pathlib import Path
 from subprocess import PIPE, STDOUT, run
 from typing import Union
 
-ACTION_PATH = Path(os.environ["GITHUB_ACTION_PATH"])
-ENV_PATH = ACTION_PATH / ".black-env"
+ACTION_PATH = Path(os.environ["GITHUB_ACTION_PATH"])# d
+ENV_PATH = ACTION_PATH / ".monochromatic-env"
 ENV_BIN = ENV_PATH / ("Scripts" if sys.platform == "win32" else "bin")
 OPTIONS = os.getenv("INPUT_OPTIONS", default="")
 SRC = os.getenv("INPUT_SRC", default="")
 JUPYTER = os.getenv("INPUT_JUPYTER") == "true"
-BLACK_ARGS = os.getenv("INPUT_BLACK_ARGS", default="")
+monochromatic_ARGS = os.getenv("INPUT_monochromatic_ARGS", default="")
 VERSION = os.getenv("INPUT_VERSION", default="")
 USE_PYPROJECT = os.getenv("INPUT_USE_PYPROJECT") == "true"
 
-BLACK_VERSION_RE = re.compile(r"^black([^A-Z0-9._-]+.*)$", re.IGNORECASE)
+monochromatic_VERSION_RE = re.compile(r"^monochromatic([^A-Z0-9._-]+.*)$", re.IGNORECASE)#what
 EXTRAS_RE = re.compile(r"\[.*\]")
-EXPORT_SUBST_FAIL_RE = re.compile(r"\$Format:.*\$")
+EXPORT_SUBST_FAIL_RE = re.compile(r"\$Format:.*\$")# f
 
 
 def determine_version_specifier() -> str:
-	"""Determine the version of Black to install.
+	"""Determine the version of monochromatic to install.
 
-	The version can be specified either via the `with.version` input or via the
+	The version can be specified either via the `with.version` ƒinput or via the
 	pyproject.toml file if `with.use_pyproject` is set to `true`.
 	"""
 	if USE_PYPROJECT and VERSION:
@@ -65,7 +65,7 @@ def read_version_specifier_from_pyproject() -> str:
 		)
 		sys.exit(1)
 
-	version = pyproject.get("tool", {}).get("blackish", {}).get("required-version")
+	version = pyproject.get("tool", {}).get("monochromaticish", {}).get("required-version")
 	if version is not None:
 		return f"=={version}"
 
@@ -81,7 +81,7 @@ def read_version_specifier_from_pyproject() -> str:
 
 	if version is None:
 		print(
-			"::error::'black' dependency missing from pyproject.toml.",
+			"::error::'monochromatic' dependency missing from pyproject.toml.",
 			file=sys.stderr,
 			flush=True,
 		)
@@ -98,14 +98,14 @@ def find_black_version_in_array(array: object) -> Union[str, None]:
 			# Rudimentary PEP 508 parsing.
 			item = item.split(";")[0]
 			item = EXTRAS_RE.sub("", item).strip()
-			if item == "black":
+			if item == "monochromatic":
 				print(
-					"::error::Version specifier missing for 'black' dependency in pyproject.toml.",
+					"::error::Version specifier missing for 'monochromatic' dependency in pyproject.toml.",
 					file=sys.stderr,
 					flush=True,
 				)
 				sys.exit(1)
-			elif m := BLACK_VERSION_RE.match(item):
+			elif m := monochromatic_VERSION_RE.match(item):
 				return m.group(1).strip()
 	except TypeError:
 		pass
@@ -121,7 +121,7 @@ if JUPYTER:
 else:
 	extra_deps = "[colorama]"
 if version_specifier:
-	req = f"black{extra_deps}{version_specifier}"
+	req = f"monochromatic{extra_deps}{version_specifier}"
 else:
 	describe_name = ""
 	with open(ACTION_PATH / ".git_archival.txt", encoding="utf-8") as fp:
@@ -138,7 +138,7 @@ else:
 	# - $Format:%(describe:tags=true,match=*[0-9]*)$ (if export-subst fails)
 	if describe_name.count("-") < 2 and EXPORT_SUBST_FAIL_RE.match(describe_name) is None:
 		# the action's commit matches a tag exactly, install exact version from PyPI
-		req = f"black{extra_deps}=={describe_name}"
+		req = f"monochromatic{extra_deps}=={describe_name}"
 	else:
 		# the action's commit does not match any tag, install from the local git repo
 		req = f".{extra_deps}"
@@ -152,15 +152,15 @@ pip_proc = run(
 )
 if pip_proc.returncode:
 	print(pip_proc.stdout)
-	print("::error::Failed to install Black.", file=sys.stderr, flush=True)
+	print("::error::Failed to install monochromatic.", file=sys.stderr, flush=True)
 	sys.exit(pip_proc.returncode)
 
 
-base_cmd = [str(ENV_BIN / "black")]
-if BLACK_ARGS:
+base_cmd = [str(ENV_BIN / "monochromatic")]
+if monochromatic_ARGS:
 	# TODO: remove after a while since this is deprecated in favour of SRC + OPTIONS.
 	proc = run(
-		[*base_cmd, *shlex.split(BLACK_ARGS)],
+		[*base_cmd, *shlex.split(monochromatic_ARGS)],
 		stdout=PIPE,
 		stderr=STDOUT,
 		encoding="utf-8",

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-# check out every commit added by the current branch, blackify them,
+# check out every commit added by the current branch, monochromaticify them,
 # and generate diffs to reconstruct the original commits, but then
-# blackified
+# monochromaticified
 import logging
 import os
 import sys
@@ -12,7 +12,7 @@ def git(*args: str) -> str:
     return check_output(["git", *args]).decode("utf8").strip()
 
 
-def blackify(base_branch: str, black_command: str, logger: logging.Logger) -> int:
+def monochromaticify(base_branch: str, monochromatic_command: str, logger: logging.Logger) -> int:
     current_branch = git("branch", "--show-current")
 
     if not current_branch or base_branch == current_branch:
@@ -34,11 +34,11 @@ def blackify(base_branch: str, black_command: str, logger: logging.Logger) -> in
         "log", "--reverse", "--pretty=format:%H", f"{merge_base}~1..HEAD"
     ).split()
     for commit in commits:
-        git("checkout", commit, f"-b{commit}-black")
-        check_output(black_command, shell=True)
-        git("commit", "-aqm", "blackify")
+        git("checkout", commit, f"-b{commit}-monochromatic")
+        check_output(monochromatic_command, shell=True)
+        git("commit", "-aqm", "monochromaticify")
 
-    git("checkout", base_branch, f"-b{current_branch}-black")
+    git("checkout", base_branch, f"-b{current_branch}-monochromatic")
 
     for last_commit, commit in zip(commits, commits[1:]):
         allow_empty = (
@@ -51,7 +51,7 @@ def blackify(base_branch: str, black_command: str, logger: logging.Logger) -> in
                 "diff",
                 "--binary",
                 "--find-copies",
-                f"{last_commit}-black..{commit}-black",
+                f"{last_commit}-monochromatic..{commit}-monochromatic",
             ],
             stdout=PIPE,
         )
@@ -77,7 +77,7 @@ def blackify(base_branch: str, black_command: str, logger: logging.Logger) -> in
         git("commit", "--allow-empty", "-aqC", commit)
 
     for commit in commits:
-        git("branch", "-qD", "%s-black" % commit)
+        git("branch", "-qD", "%s-monochromatic" % commit)
 
     return 0
 
@@ -87,10 +87,10 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("base_branch")
-    parser.add_argument("--black_command", default="black -q .")
+    parser.add_argument("--monochromatic_command", default="monochromatic -q .")
     parser.add_argument("--logfile", type=argparse.FileType("w"), default=sys.stdout)
     args = parser.parse_args()
     logger = logging.getLogger(__name__)
     logger.addHandler(logging.StreamHandler(args.logfile))
     logger.setLevel(logging.INFO)
-    sys.exit(blackify(args.base_branch, args.black_command, logger))
+    sys.exit(monochromaticify(args.base_branch, args.monochromatic_command, logger))

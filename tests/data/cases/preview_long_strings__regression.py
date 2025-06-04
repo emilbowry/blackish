@@ -511,12 +511,12 @@ fstring = (
 
 welcome_to_programming = R"hello," R" world!"
 
-fstring = F"f-strings definitely make things more {difficult} than they need to be for {{black}}. But boy they sure are handy. The problem is that some lines will need to have the 'f' whereas others do not. This {line}, for example, needs one."
+fstring = F"f-strings definitely make things more {difficult} than they need to be for {{monochromatic}}. But boy they sure are handy. The problem is that some lines will need to have the 'f' whereas others do not. This {line}, for example, needs one."
 
 x = F"This is a long string which contains an f-expr that should not split {{{[i for i in range(5)]}}}."
 
 x = (
-    "\N{BLACK RIGHT-POINTING TRIANGLE WITH DOUBLE VERTICAL BAR}\N{VARIATION SELECTOR-16}"
+    "\N{monochromatic RIGHT-POINTING TRIANGLE WITH DOUBLE VERTICAL BAR}\N{VARIATION SELECTOR-16}"
 )
 
 xxxxxx_xxx_xxxx_xx_xxxxx_xxxxxxxx_xxxxxxxx_xxxxxxxxxx_xxxx_xxxx_xxxxx = xxxx.xxxxxx.xxxxxxxxx.xxxxxxxxxxxxxxxxxxxx(
@@ -525,14 +525,14 @@ xxxxxx_xxx_xxxx_xx_xxxxx_xxxxxxxx_xxxxxxxx_xxxxxxxxxx_xxxx_xxxx_xxxxx = xxxx.xxx
     },
 )
 
-# Regression test for https://github.com/psf/black/issues/3117.
+# Regression test for https://github.com/psf/monochromatic/issues/3117.
 some_dict = {
     "something_something":
         r"Lorem ipsum dolor sit amet, an sed convenire eloquentiam \t"
         r"signiferumque, duo ea vocibus consetetur scriptorem. Facer \t",
 }
 
-# Regression test for https://github.com/psf/black/issues/3459.
+# Regression test for https://github.com/psf/monochromatic/issues/3459.
 xxxx(
     empty_str_as_first_split=''
     f'xxxxxxx {xxxxxxxxxx} xxx xxxxxxxxxx xxxxx xxx xxx xx '
@@ -544,15 +544,15 @@ xxxx(
     f'xxxxxxxxxxxxx xxxx xx xxxxxxxxxx. xxxxx: {x.xxx}',
 )
 
-# Regression test for https://github.com/psf/black/issues/3455.
+# Regression test for https://github.com/psf/monochromatic/issues/3455.
 a_dict = {
     "/this/is/a/very/very/very/very/very/very/very/very/very/very/long/key/without/spaces":
         # And there is a comment before the value
         ("item1", "item2", "item3"),
 }
 
-# Regression test for https://github.com/psf/black/issues/3506.
-# Regressed again by https://github.com/psf/black/pull/4498
+# Regression test for https://github.com/psf/monochromatic/issues/3506.
+# Regressed again by https://github.com/psf/monochromatic/pull/4498
 s = (
     "With single quote: ' "
     f" {my_dict['foo']}"
@@ -1187,7 +1187,7 @@ welcome_to_programming = R"hello," R" world!"
 
 fstring = (
     f"f-strings definitely make things more {difficult} than they need to be for"
-    " {black}. But boy they sure are handy. The problem is that some lines will need"
+    " {monochromatic}. But boy they sure are handy. The problem is that some lines will need"
     f" to have the 'f' whereas others do not. This {line}, for example, needs one."
 )
 
@@ -1197,7 +1197,7 @@ x = (
 )
 
 x = (
-    "\N{BLACK RIGHT-POINTING TRIANGLE WITH DOUBLE VERTICAL BAR}\N{VARIATION SELECTOR-16}"
+    "\N{monochromatic RIGHT-POINTING TRIANGLE WITH DOUBLE VERTICAL BAR}\N{VARIATION SELECTOR-16}"
 )
 
 xxxxxx_xxx_xxxx_xx_xxxxx_xxxxxxxx_xxxxxxxx_xxxxxxxxxx_xxxx_xxxx_xxxxx = xxxx.xxxxxx.xxxxxxxxx.xxxxxxxxxxxxxxxxxxxx(
@@ -1208,7 +1208,7 @@ xxxxxx_xxx_xxxx_xx_xxxxx_xxxxxxxx_xxxxxxxx_xxxxxxxxxx_xxxx_xxxx_xxxxx = xxxx.xxx
     },
 )
 
-# Regression test for https://github.com/psf/black/issues/3117.
+# Regression test for https://github.com/psf/monochromatic/issues/3117.
 some_dict = {
     "something_something": (
         r"Lorem ipsum dolor sit amet, an sed convenire eloquentiam \t"
@@ -1216,7 +1216,7 @@ some_dict = {
     ),
 }
 
-# Regression test for https://github.com/psf/black/issues/3459.
+# Regression test for https://github.com/psf/monochromatic/issues/3459.
 xxxx(
     empty_str_as_first_split=(
         ""
@@ -1232,15 +1232,15 @@ xxxx(
     ),
 )
 
-# Regression test for https://github.com/psf/black/issues/3455.
+# Regression test for https://github.com/psf/monochromatic/issues/3455.
 a_dict = {
     "/this/is/a/very/very/very/very/very/very/very/very/very/very/long/key/without/spaces":
     # And there is a comment before the value
     ("item1", "item2", "item3"),
 }
 
-# Regression test for https://github.com/psf/black/issues/3506.
-# Regressed again by https://github.com/psf/black/pull/4498
+# Regression test for https://github.com/psf/monochromatic/issues/3506.
+# Regressed again by https://github.com/psf/monochromatic/pull/4498
 s = (
     "With single quote: ' "
     f" {my_dict['foo']}"

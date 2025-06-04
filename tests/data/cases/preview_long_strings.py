@@ -19,11 +19,11 @@ D3 = {x: "This is a really long string that can't possibly be expected to fit al
 
 D4 = {"A long and ridiculous {}".format(string_key): "This is a really really really long string that has to go i,side of a dictionary. It is soooo bad.", some_func("calling", "some", "stuff"): "This is a really really really long string that has to go inside of a dictionary. It is {soooo} bad (#{x}).".format(sooo="soooo", x=2), "A %s %s" % ("formatted", "string"): "This is a really really really long string that has to go inside of a dictionary. It is %s bad (#%d)." % ("soooo", 2)}
 
-D5 = {  # Test for https://github.com/psf/black/issues/3261
+D5 = {  # Test for https://github.com/psf/monochromatic/issues/3261
     ("This is a really long string that can't be expected to fit in one line and is used as a nested dict's key"): {"inner": "value"},
 }
 
-D6 = {  # Test for https://github.com/psf/black/issues/3261
+D6 = {  # Test for https://github.com/psf/monochromatic/issues/3261
     ("This is a really long string that can't be expected to fit in one line and is used as a dict's key"): ["value1", "value2"],
 }
 
@@ -51,7 +51,7 @@ bad_split2 = "But what should happen when code has already " \
              "with a space at the end instead of the " \
              "beginning. Or what about when it is split too " \
              "soon? In the case of a split that is too " \
-             "short, black will try to honer the custom " \
+             "short, monochromatic will try to honer the custom " \
              "split."
 
 bad_split3 = (
@@ -66,7 +66,7 @@ bad_split_func1(
     "with a space at the end instead of the "
     "beginning. Or what about when it is split too "
     "soon? In the case of a split that is too "
-    "short, black will try to honer the custom "
+    "short, monochromatic will try to honer the custom "
     "split.",
     xxx, yyy, zzz
 )
@@ -85,7 +85,7 @@ bad_split_func3(
         "with a space at the end instead of the "
         r"beginning. Or what about when it is split too "
         r"soon? In the case of a split that is too "
-        "short, black will try to honer the custom "
+        "short, monochromatic will try to honer the custom "
         "split."
     ),
     xxx,
@@ -112,7 +112,7 @@ inline_comments_func2(
     xxx,
 )
 
-raw_string = r"This is a long raw string. When re-formatting this string, black needs to make sure it prepends the 'r' onto the new string."
+raw_string = r"This is a long raw string. When re-formatting this string, monochromatic needs to make sure it prepends the 'r' onto the new string."
 
 fmt_string1 = "We also need to be sure to preserve any and all {} which may or may not be attached to the string in question.".format("method calls")
 
@@ -124,7 +124,7 @@ old_fmt_string2 = "This is a %s %s %s %s" % ("really really really really really
 
 old_fmt_string3 = "Whereas only the strings after the percent sign were long in the last example, this example uses a long initial string as well. This is another %s %s %s %s" % ("really really really really really", "old", "way to format strings!", "Use f-strings instead!")
 
-fstring = f"f-strings definitely make things more {difficult} than they need to be for {{black}}. But boy they sure are handy. The problem is that some lines will need to have the 'f' whereas others do not. This {line}, for example, needs one."
+fstring = f"f-strings definitely make things more {difficult} than they need to be for {{monochromatic}}. But boy they sure are handy. The problem is that some lines will need to have the 'f' whereas others do not. This {line}, for example, needs one."
 
 fstring_with_no_fexprs = f"Some regular string that needs to get split certainly but is NOT an fstring by any means whatsoever."
 
@@ -428,13 +428,13 @@ D4 = {
     ),
 }
 
-D5 = {  # Test for https://github.com/psf/black/issues/3261
+D5 = {  # Test for https://github.com/psf/monochromatic/issues/3261
     "This is a really long string that can't be expected to fit in one line and is used as a nested dict's key": {
         "inner": "value"
     },
 }
 
-D6 = {  # Test for https://github.com/psf/black/issues/3261
+D6 = {  # Test for https://github.com/psf/monochromatic/issues/3261
     "This is a really long string that can't be expected to fit in one line and is used as a dict's key": [
         "value1",
         "value2",
@@ -526,7 +526,7 @@ bad_split2 = (
     "with a space at the end instead of the "
     "beginning. Or what about when it is split too "
     "soon? In the case of a split that is too "
-    "short, black will try to honer the custom "
+    "short, monochromatic will try to honer the custom "
     "split."
 )
 
@@ -542,7 +542,7 @@ bad_split_func1(
     "with a space at the end instead of the "
     "beginning. Or what about when it is split too "
     "soon? In the case of a split that is too "
-    "short, black will try to honer the custom "
+    "short, monochromatic will try to honer the custom "
     "split.",
     xxx,
     yyy,
@@ -567,7 +567,7 @@ bad_split_func3(
         "with a space at the end instead of the "
         r"beginning. Or what about when it is split too "
         r"soon? In the case of a split that is too "
-        "short, black will try to honer the custom "
+        "short, monochromatic will try to honer the custom "
         "split."
     ),
     xxx,
@@ -592,7 +592,7 @@ inline_comments_func2(
 )
 
 raw_string = (
-    r"This is a long raw string. When re-formatting this string, black needs to make"
+    r"This is a long raw string. When re-formatting this string, monochromatic needs to make"
     r" sure it prepends the 'r' onto the new string."
 )
 
@@ -631,7 +631,7 @@ old_fmt_string3 = (
 
 fstring = (
     f"f-strings definitely make things more {difficult} than they need to be for"
-    " {black}. But boy they sure are handy. The problem is that some lines will need"
+    " {monochromatic}. But boy they sure are handy. The problem is that some lines will need"
     f" to have the 'f' whereas others do not. This {line}, for example, needs one."
 )
 

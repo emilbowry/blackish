@@ -23,10 +23,10 @@ if sys.version_info >= (3, 11):
 else:
     import tomli as tomllib
 
-from black.handle_ipynb_magics import jupyter_dependencies_are_installed
-from black.mode import TargetVersion
-from black.output import err
-from black.report import Report
+from monochromatic.handle_ipynb_magics import jupyter_dependencies_are_installed
+from monochromatic.mode import TargetVersion
+from monochromatic.output import err
+from monochromatic.report import Report
 
 if TYPE_CHECKING:
     import colorama  # noqa: F401
@@ -49,7 +49,7 @@ def find_project_root(
 ) -> tuple[Path, str]:
     """Return a directory containing .git, .hg, or pyproject.toml.
 
-    pyproject.toml files are only considered if they contain a [tool.black]
+    pyproject.toml files are only considered if they contain a [tool.monochromatic]
     section and are ignored otherwise.
 
     That directory will be a common parent of all files and directories
@@ -89,7 +89,7 @@ def find_project_root(
 
         if (directory / "pyproject.toml").is_file():
             pyproject_toml = _load_toml(directory / "pyproject.toml")
-            if "black" in pyproject_toml.get("tool", {}):
+            if "monochromatic" in pyproject_toml.get("tool", {}):
                 return directory, "pyproject.toml"
 
     return directory, "file system root"
@@ -119,12 +119,12 @@ def find_pyproject_toml(
 
 @mypyc_attr(patchable=True)
 def parse_pyproject_toml(path_config: str) -> dict[str, Any]:
-    """Parse a pyproject toml file, pulling out relevant parts for Black.
+    """Parse a pyproject toml file, pulling out relevant parts for monochromatic.
 
     If parsing fails, will raise a tomllib.TOMLDecodeError.
     """
     pyproject_toml = _load_toml(path_config)
-    config: dict[str, Any] = pyproject_toml.get("tool", {}).get("black", {})
+    config: dict[str, Any] = pyproject_toml.get("tool", {}).get("monochromatic", {})
     config = {k.replace("--", "").replace("-", "_"): v for k, v in config.items()}
 
     if "target_version" not in config:
@@ -138,7 +138,7 @@ def parse_pyproject_toml(path_config: str) -> dict[str, Any]:
 def infer_target_version(
     pyproject_toml: dict[str, Any],
 ) -> Optional[list[TargetVersion]]:
-    """Infer Black's target version from the project metadata in pyproject.toml.
+    """Infer monochromatic's target version from the project metadata in pyproject.toml.
 
     Supports the PyPA standard format (PEP 621):
     https://packaging.python.org/en/latest/specifications/declaring-project-metadata/#requires-python
@@ -219,9 +219,9 @@ def strip_specifier_set(specifier_set: SpecifierSet) -> SpecifierSet:
 
 @lru_cache
 def find_user_pyproject_toml() -> Path:
-    r"""Return the path to the top-level user configuration for black.
+    r"""Return the path to the top-level user configuration for monochromatic.
 
-    This looks for ~\.black on Windows and ~/.config/black on Linux and other
+    This looks for ~\.monochromatic on Windows and ~/.config/monochromatic on Linux and other
     Unix systems.
 
     May raise:
@@ -230,10 +230,10 @@ def find_user_pyproject_toml() -> Path:
     """
     if sys.platform == "win32":
         # Windows
-        user_config_path = Path.home() / ".black"
+        user_config_path = Path.home() / ".monochromatic"
     else:
         config_root = os.environ.get("XDG_CONFIG_HOME", "~/.config")
-        user_config_path = Path(config_root).expanduser() / "black"
+        user_config_path = Path(config_root).expanduser() / "monochromatic"
     return _cached_resolve(user_config_path)
 
 

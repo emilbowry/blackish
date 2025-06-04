@@ -1,5 +1,5 @@
 """
-Summarize Black runs to users.
+Summarize monochromatic runs to users.
 """
 
 from dataclasses import dataclass
@@ -8,7 +8,7 @@ from pathlib import Path
 
 from click import style
 
-from black.output import err, out
+from monochromatic.output import err, out
 
 
 class Changed(Enum):

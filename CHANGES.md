@@ -971,7 +971,8 @@ versions separately.
 
 ### Integrations
 
-- Vim plugin: prefix messages with `Black: ` so it's clear they come from Black (#3194)
+- Vim plugin: prefix messages with `Black: ` so it's clear they come from monochromatic
+  (#3194)
 - Docker: changed to a /opt/venv installation + added to PATH to be available to
   non-root users (#3202)
 

@@ -4,8 +4,8 @@ from dataclasses import dataclass
 from functools import lru_cache
 from typing import Final, Optional, Union
 
-from black.mode import Mode, Preview
-from black.nodes import (
+from monochromatic.mode import Mode, Preview
+from monochromatic.nodes import (
     CLOSING_BRACKETS,
     STANDALONE_COMMENT,
     WHITESPACE,

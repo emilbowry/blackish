@@ -1,3 +1,3 @@
-import blackd
+import monochromaticd
 
-blackd.patched_main()
+monochromaticd.patched_main()

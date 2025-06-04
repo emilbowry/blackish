@@ -2,9 +2,9 @@ from collections.abc import Iterator
 from dataclasses import dataclass, field
 from typing import Any, TypeVar, Union
 
-from black.nodes import Visitor
-from black.output import out
-from black.parsing import lib2to3_parse
+from monochromatic.nodes import Visitor
+from monochromatic.output import out
+from monochromatic.parsing import lib2to3_parse
 from blib2to3.pgen2 import token
 from blib2to3.pytree import Leaf, Node, type_repr
 
